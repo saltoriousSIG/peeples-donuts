@@ -23,7 +23,7 @@ import { useAccountData } from "@/hooks/useAccountData";
 import { NavBar } from "@/components/nav-bar";
 import { AddToFarcasterDialog } from "@/components/add-to-farcaster-dialog";
 
-type MiniAppContext = {
+export type MiniAppContext = {
   user?: {
     fid: number;
     username?: string;
@@ -57,7 +57,7 @@ const toBigInt = (value: bigint | number) =>
 const formatTokenAmount = (
   value: bigint,
   decimals: number,
-  maximumFractionDigits = 2,
+  maximumFractionDigits = 2
 ) => {
   if (value === 0n) return "0";
   const asNumber = Number(formatUnits(value, decimals));
@@ -101,10 +101,10 @@ export default function HomePage() {
   const [customMessage, setCustomMessage] = useState("");
   const [ethUsdPrice, setEthUsdPrice] = useState<number>(3500);
   const [glazeResult, setGlazeResult] = useState<"success" | "failure" | null>(
-    null,
+    null
   );
   const glazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
+    null
   );
   const resetGlazeResult = useCallback(() => {
     if (glazeResultTimeoutRef.current) {
@@ -113,27 +113,26 @@ export default function HomePage() {
     }
     setGlazeResult(null);
   }, []);
-  const showGlazeResult = useCallback(
-    (result: "success" | "failure") => {
-      if (glazeResultTimeoutRef.current) {
-        clearTimeout(glazeResultTimeoutRef.current);
-      }
-      setGlazeResult(result);
-      glazeResultTimeoutRef.current = setTimeout(() => {
-        setGlazeResult(null);
-        glazeResultTimeoutRef.current = null;
-      }, 3000);
-    },
-    [],
-  );
+  const showGlazeResult = useCallback((result: "success" | "failure") => {
+    if (glazeResultTimeoutRef.current) {
+      clearTimeout(glazeResultTimeoutRef.current);
+    }
+    setGlazeResult(result);
+    glazeResultTimeoutRef.current = setTimeout(() => {
+      setGlazeResult(null);
+      glazeResultTimeoutRef.current = null;
+    }, 3000);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     const hydrateContext = async () => {
       try {
-        const ctx = (await (sdk as unknown as {
-          context: Promise<MiniAppContext> | MiniAppContext;
-        }).context) as MiniAppContext;
+        const ctx = (await (
+          sdk as unknown as {
+            context: Promise<MiniAppContext> | MiniAppContext;
+          }
+        ).context) as MiniAppContext;
         if (!cancelled) {
           setContext(ctx);
         }
@@ -211,6 +210,8 @@ export default function HomePage() {
     },
   });
 
+  console.log(rawMinerState);
+
   const minerState = useMemo(() => {
     if (!rawMinerState) return undefined;
     return rawMinerState as unknown as MinerState;
@@ -232,20 +233,16 @@ export default function HomePage() {
     reset: resetWrite,
   } = useWriteContract();
 
-  const {
-    data: receipt,
-    isLoading: isConfirming,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-    chainId: base.id,
-  });
+  const { data: receipt, isLoading: isConfirming } =
+    useWaitForTransactionReceipt({
+      hash: txHash,
+      chainId: base.id,
+    });
 
   useEffect(() => {
     if (!receipt) return;
     if (receipt.status === "success" || receipt.status === "reverted") {
-      showGlazeResult(
-        receipt.status === "success" ? "success" : "failure",
-      );
+      showGlazeResult(receipt.status === "success" ? "success" : "failure");
       refetchMinerState();
       const resetTimer = setTimeout(() => {
         resetWrite();
@@ -271,7 +268,7 @@ export default function HomePage() {
     queryKey: ["neynar-user", minerAddress],
     queryFn: async () => {
       const res = await fetch(
-        `/api/neynar/user?address=${encodeURIComponent(minerAddress)}`,
+        `/api/neynar/user?address=${encodeURIComponent(minerAddress)}`
       );
       if (!res.ok) {
         throw new Error("Failed to load Farcaster profile.");
@@ -311,7 +308,7 @@ export default function HomePage() {
       const price = minerState.price;
       const epochId = toBigInt(minerState.epochId);
       const deadline = BigInt(
-        Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS,
+        Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS
       );
       const maxPrice = price === 0n ? 0n : (price * 105n) / 100n;
       await writeContract({
@@ -347,7 +344,9 @@ export default function HomePage() {
   ]);
 
   // Local state for smooth glazed counter interpolation
-  const [interpolatedGlazed, setInterpolatedGlazed] = useState<bigint | null>(null);
+  const [interpolatedGlazed, setInterpolatedGlazed] = useState<bigint | null>(
+    null
+  );
 
   // Update interpolated glazed amount smoothly between fetches
   useEffect(() => {
@@ -390,13 +389,11 @@ export default function HomePage() {
       minerAddr.toLowerCase() === (address as string).toLowerCase();
 
     const fallbackAvatarUrl = `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
-      minerAddr.toLowerCase(),
+      minerAddr.toLowerCase()
     )}`;
 
     const profile = neynarUser?.user ?? null;
-    const profileUsername = profile?.username
-      ? `@${profile.username}`
-      : null;
+    const profileUsername = profile?.username ? `@${profile.username}` : null;
     const profileDisplayName = profile?.displayName ?? null;
 
     const contextProfile = context?.user ?? null;
@@ -433,16 +430,18 @@ export default function HomePage() {
 
     const secondary =
       uniqueLabels.find(
-        (label) => label !== primary && label.startsWith("@"),
+        (label) => label !== primary && label.startsWith("@")
       ) ?? "";
 
     const avatarUrl =
       profile?.pfpUrl ??
-      (isYou ? contextProfile?.pfpUrl ?? null : null) ??
+      (isYou ? (contextProfile?.pfpUrl ?? null) : null) ??
       fallbackAvatarUrl;
 
     const isUnknown =
-      !profile && !claimedHandle && !(isYou && (contextHandle || contextDisplayName));
+      !profile &&
+      !claimedHandle &&
+      !(isYou && (contextHandle || contextDisplayName));
 
     return {
       primary,
@@ -468,26 +467,38 @@ export default function HomePage() {
   const glazePriceDisplay = minerState
     ? `Ξ${formatEth(minerState.price, minerState.price === 0n ? 0 : 5)}`
     : "Ξ—";
-  const glazedDisplay = minerState && interpolatedGlazed !== null
-    ? `🍩${formatTokenAmount(interpolatedGlazed, DONUT_DECIMALS, 2)}`
-    : "🍩—";
+  const glazedDisplay =
+    minerState && interpolatedGlazed !== null
+      ? `🍩${formatTokenAmount(interpolatedGlazed, DONUT_DECIMALS, 2)}`
+      : "🍩—";
 
   // Calculate USD values for donuts
-  const glazedUsdValue = minerState && minerState.donutPrice > 0n && interpolatedGlazed !== null
-    ? (Number(formatEther(interpolatedGlazed)) * Number(formatEther(minerState.donutPrice)) * ethUsdPrice).toFixed(2)
-    : "0.00";
+  const glazedUsdValue =
+    minerState && minerState.donutPrice > 0n && interpolatedGlazed !== null
+      ? (
+          Number(formatEther(interpolatedGlazed)) *
+          Number(formatEther(minerState.donutPrice)) *
+          ethUsdPrice
+        ).toFixed(2)
+      : "0.00";
 
-  const glazeRateUsdValue = minerState && minerState.donutPrice > 0n
-    ? (Number(formatUnits(minerState.nextDps, DONUT_DECIMALS)) * Number(formatEther(minerState.donutPrice)) * ethUsdPrice).toFixed(4)
-    : "0.0000";
+  const glazeRateUsdValue =
+    minerState && minerState.donutPrice > 0n
+      ? (
+          Number(formatUnits(minerState.nextDps, DONUT_DECIMALS)) *
+          Number(formatEther(minerState.donutPrice)) *
+          ethUsdPrice
+        ).toFixed(4)
+      : "0.0000";
 
   // Calculate PNL in USD
   const pnlUsdValue = minerState
     ? (() => {
         const halfInitPrice = minerState.initPrice / 2n;
-        const pnl = minerState.price > minerState.initPrice
-          ? (minerState.price * 80n) / 100n - halfInitPrice
-          : minerState.price - halfInitPrice;
+        const pnl =
+          minerState.price > minerState.initPrice
+            ? (minerState.price * 80n) / 100n - halfInitPrice
+            : minerState.price - halfInitPrice;
         const pnlEth = Number(formatEther(pnl >= 0n ? pnl : -pnl));
         const pnlUsd = pnlEth * ethUsdPrice;
         const sign = pnl >= 0n ? "+" : "-";
@@ -532,10 +543,18 @@ export default function HomePage() {
 
     if (username) {
       // Open Farcaster profile URL using username (cleaner URL)
-      window.open(`https://warpcast.com/${username}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `https://warpcast.com/${username}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
     } else if (fid) {
       // Fallback to FID-based URL if username not available
-      window.open(`https://warpcast.com/~/profiles/${fid}`, "_blank", "noopener,noreferrer");
+      window.open(
+        `https://warpcast.com/~/profiles/${fid}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
     } else {
       console.log("No FID or username available for King Glazer");
     }
@@ -551,12 +570,12 @@ export default function HomePage() {
   const userAvatarUrl = context?.user?.pfpUrl ?? null;
 
   return (
-    <main className="flex h-screen w-screen justify-center overflow-hidden bg-black font-mono text-white">
+    <main className="flex h-screen w-screen justify-center overflow-hidden bg-[#FFFDD0] coming-soon text-black">
       {/* Add to Farcaster Dialog - shows on first visit */}
       <AddToFarcasterDialog showOnFirstVisit={true} />
 
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden rounded-[28px] bg-black px-2 pb-4 shadow-inner"
+        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden rounded-[28px] bg-[#FFFDD0] px-2 pb-4 shadow-inner"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
@@ -564,9 +583,15 @@ export default function HomePage() {
       >
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-wide">GLAZERY</h1>
+            <h1 className="text-3xl font-bold tracking-wide amatic flex items-center justify-center">
+              <img
+                src="/media/peeples_donuts.png"
+                className="h-[50px] w-[50px]"
+              />
+              PEEPLES DONUTS
+            </h1>
             {context?.user ? (
-              <div className="flex items-center gap-2 rounded-full bg-black px-3 py-1">
+              <div className="flex items-center gap-2 rounded-full bg-[#FFFFF0] px-3 py-1">
                 <Avatar className="h-8 w-8 border border-zinc-800">
                   <AvatarImage
                     src={userAvatarUrl || undefined}
@@ -580,7 +605,7 @@ export default function HomePage() {
                 <div className="leading-tight text-left">
                   <div className="text-sm font-bold">{userDisplayName}</div>
                   {userHandle ? (
-                    <div className="text-xs text-gray-400">{userHandle}</div>
+                    <div className="text-xs text-gray-600">{userHandle}</div>
                   ) : null}
                 </div>
               </div>
@@ -589,9 +614,9 @@ export default function HomePage() {
 
           <Card
             className={cn(
-              "mt-2 border-zinc-800 bg-black transition-shadow",
+              "mt-2 border-zinc-800 bg-[#FFFFF0] transition-shadow text-black",
               occupantDisplay.isYou &&
-                "border-pink-500 shadow-[inset_0_0_24px_rgba(236,72,153,0.55)] animate-glow",
+                "border-[#82AD94] shadow-[inset_0_0_24px_rgba(130,173,148,0.55)] animate-glow"
             )}
           >
             <CardContent className="flex items-center justify-between gap-3 p-2.5">
@@ -599,9 +624,14 @@ export default function HomePage() {
               <div
                 className={cn(
                   "flex items-center gap-2 min-w-0 flex-1",
-                  neynarUser?.user?.fid && "cursor-pointer hover:opacity-80 transition-opacity"
+                  neynarUser?.user?.fid &&
+                    "cursor-pointer hover:opacity-80 transition-opacity"
                 )}
-                onClick={neynarUser?.user?.fid ? handleViewKingGlazerProfile : undefined}
+                onClick={
+                  neynarUser?.user?.fid
+                    ? handleViewKingGlazerProfile
+                    : undefined
+                }
               >
                 <Avatar className="h-8 w-8 flex-shrink-0">
                   <AvatarImage
@@ -609,7 +639,7 @@ export default function HomePage() {
                     alt={occupantDisplay.primary}
                     className="object-cover"
                   />
-                  <AvatarFallback className="bg-zinc-800 text-white text-xs uppercase">
+                  <AvatarFallback className="bg-zinc-800 text-gray-600 text-xs uppercase">
                     {minerState ? (
                       occupantFallbackInitials
                     ) : (
@@ -621,18 +651,16 @@ export default function HomePage() {
                   <div
                     className={cn(
                       "text-[9px] font-bold uppercase tracking-[0.08em]",
-                      occupantDisplay.isYou
-                        ? "text-pink-400"
-                        : "text-gray-400",
+                      occupantDisplay.isYou ? "text-[#82AD94]" : "text-gray-600"
                     )}
                   >
                     KING GLAZER
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-white truncate">
+                  <div className="flex items-center gap-1 text-sm text-gray-700 truncate">
                     <span className="truncate">{occupantDisplay.primary}</span>
                   </div>
                   {occupantDisplay.secondary ? (
-                    <div className="text-[10px] text-gray-400 truncate">
+                    <div className="text-[10px] text-gray-600 truncate">
                       {occupantDisplay.secondary}
                     </div>
                   ) : null}
@@ -643,56 +671,94 @@ export default function HomePage() {
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 {/* Glazed Row */}
                 <div className="flex items-center gap-2">
-                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-400 w-12 text-right">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600 w-12 text-right">
                     GLAZED
                   </div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-sm font-semibold text-[#82AD94]">
                     {glazedDisplay}
                   </div>
-                  <div className="text-[10px] text-gray-400">
+                  <div className="text-[10px] text-gray-600">
                     ${glazedUsdValue}
                   </div>
                 </div>
 
                 {/* PNL Row */}
                 <div className="flex items-center gap-2">
-                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-400 w-12 text-right">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600 w-12 text-right">
                     PNL
                   </div>
-                  <div className={cn(
-                    "text-sm font-semibold",
-                    minerState && (() => {
-                      const halfInitPrice = minerState.initPrice / 2n;
-                      const pnl = minerState.price > minerState.initPrice
-                        ? (minerState.price * 80n) / 100n - halfInitPrice
-                        : minerState.price - halfInitPrice;
-                      return pnl >= 0n;
-                    })()
-                      ? "text-green-400"
-                      : "text-red-400"
-                  )}>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold",
+                      minerState &&
+                        (() => {
+                          const halfInitPrice = minerState.initPrice / 2n;
+                          const pnl =
+                            minerState.price > minerState.initPrice
+                              ? (minerState.price * 80n) / 100n - halfInitPrice
+                              : minerState.price - halfInitPrice;
+                          return pnl >= 0n;
+                        })()
+                        ? "text-green-400"
+                        : "text-red-400"
+                    )}
+                  >
                     {minerState
                       ? (() => {
                           const halfInitPrice = minerState.initPrice / 2n;
-                          const pnl = minerState.price > minerState.initPrice
-                            ? (minerState.price * 80n) / 100n - halfInitPrice
-                            : minerState.price - halfInitPrice;
+                          const pnl =
+                            minerState.price > minerState.initPrice
+                              ? (minerState.price * 80n) / 100n - halfInitPrice
+                              : minerState.price - halfInitPrice;
                           const sign = pnl >= 0n ? "+" : "-";
                           const absolutePnl = pnl >= 0n ? pnl : -pnl;
                           return `${sign}Ξ${formatEth(absolutePnl, 5)}`;
                         })()
                       : "Ξ—"}
                   </div>
-                  <div className="text-[10px] text-gray-400">
-                    {pnlUsdValue}
-                  </div>
+                  <div className="text-[10px] text-gray-600">{pnlUsdValue}</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="relative mt-1 overflow-hidden bg-black">
-            <div className="flex animate-scroll whitespace-nowrap py-1 text-sm font-bold text-pink-500">
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <Card className="border-zinc-800 bg-[#FFFFF0]">
+              <CardContent className="grid gap-1.5 p-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-600">
+                  GLAZE RATE
+                </div>
+                <div className="text-2xl font-semibold text-[#82AD94]">
+                  🍩{glazeRateDisplay}
+                  <span className="text-xs text-gray-600">/s</span>
+                </div>
+                <div className="text-xs text-gray-600 -mt-1">
+                  ${glazeRateUsdValue}/s
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-zinc-800 bg-[#FFFFF0]">
+              <CardContent className="grid gap-1.5 p-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-600">
+                  GLAZE PRICE
+                </div>
+                <div className="text-2xl font-semibold text-[#82AD94]">
+                  {glazePriceDisplay}
+                </div>
+                <div className="text-xs text-gray-600 -mt-1">
+                  $
+                  {minerState
+                    ? (
+                        Number(formatEther(minerState.price)) * ethUsdPrice
+                      ).toFixed(2)
+                    : "0.00"}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="relative mt-1 overflow-hidden bg-[#FFFDD0]">
+            <div className="flex animate-scroll whitespace-nowrap py-1 text-sm font-bold text-[#82AD94]">
               {Array.from({ length: 1000 }).map((_, i) => (
                 <span key={i} className="inline-block px-8">
                   {minerState?.uri && minerState.uri.trim() !== ""
@@ -711,58 +777,23 @@ export default function HomePage() {
               muted
               playsInline
               preload="auto"
-              src="/media/donut-loop.mp4"
+              src="/media/peeples_final.mp4"
             />
           </div>
 
           <div className="mt-2 flex flex-col gap-2 pb-2">
-            <div className="grid grid-cols-2 gap-2">
-              <Card className="border-zinc-800 bg-black">
-                <CardContent className="grid gap-1.5 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                    GLAZE RATE
-                  </div>
-                  <div className="text-2xl font-semibold text-white">
-                    🍩{glazeRateDisplay}<span className="text-xs text-gray-400">/s</span>
-                  </div>
-                  <div className="text-xs text-gray-400 -mt-1">
-                    ${glazeRateUsdValue}/s
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-zinc-800 bg-black">
-                <CardContent className="grid gap-1.5 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                    GLAZE PRICE
-                  </div>
-                  <div className="text-2xl font-semibold text-pink-400">
-                    {glazePriceDisplay}
-                  </div>
-                  <div className="text-xs text-gray-400 -mt-1">
-                    $
-                    {minerState
-                      ? (
-                          Number(formatEther(minerState.price)) * ethUsdPrice
-                        ).toFixed(2)
-                      : "0.00"}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             <input
               type="text"
               value={customMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
               placeholder="Add a message (optional)"
               maxLength={100}
-              className="w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm font-mono text-white placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full text-black rounded-lg border border-zinc-800 bg-[#FFFFF0] px-3 py-2 text-sm coming-soon placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
               disabled={isGlazeDisabled}
             />
 
             <Button
-              className="w-full rounded-2xl bg-pink-500 py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-pink-400 disabled:cursor-not-allowed disabled:bg-pink-500/40"
+              className="w-full rounded-2xl bg-[#82AD94] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AD94]/70 disabled:cursor-not-allowed disabled:bg-pink-500/40"
               onClick={handleGlaze}
               disabled={isGlazeDisabled}
             >
@@ -771,7 +802,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-auto px-2 pb-1">
-            <div className="mb-0.5 text-[11px] uppercase tracking-wide text-gray-400">
+            <div className="mb-0.5 text-[11px] uppercase tracking-wide text-gray-600">
               Your Balances
             </div>
 
@@ -783,7 +814,7 @@ export default function HomePage() {
                   <span>{donutBalanceDisplay}</span>
                 </div>
                 <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-400 mb-0">Mined</span>
+                  <span className="text-gray-600 mb-0">Mined</span>
                   <div className="flex items-center gap-1">
                     <span>🍩</span>
                     <span className="font-semibold">
@@ -804,7 +835,7 @@ export default function HomePage() {
                   <span>{ethBalanceDisplay}</span>
                 </div>
                 <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-400 mb-0">Spent</span>
+                  <span className="text-gray-600 mb-0">Spent</span>
                   <div className="flex items-center gap-1">
                     <span>Ξ</span>
                     <span className="font-semibold">
@@ -829,7 +860,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-400 mb-0">Earned</span>
+                  <span className="text-gray-600 mb-0">Earned</span>
                   <div className="flex items-center gap-1">
                     <span>wΞ</span>
                     <span className="font-semibold">

@@ -8,10 +8,9 @@ import {
   useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
-  useSimulateContract,
 } from "wagmi";
 import { base } from "wagmi/chains";
-import { formatEther, formatUnits, zeroAddress, type Address, maxUint256 } from "viem";
+import { formatEther, zeroAddress, type Address } from "viem";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,8 @@ type AuctionState = {
 };
 
 const DEADLINE_BUFFER_SECONDS = 5 * 60;
-const LP_TOKEN_ADDRESS = "0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703" as Address;
+const LP_TOKEN_ADDRESS =
+  "0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703" as Address;
 
 const toBigInt = (value: bigint | number) =>
   typeof value === "bigint" ? value : BigInt(value);
@@ -71,11 +71,11 @@ export default function BlazeryPage() {
   const [context, setContext] = useState<MiniAppContext | null>(null);
   const [ethUsdPrice, setEthUsdPrice] = useState<number>(3500);
   const [blazeResult, setBlazeResult] = useState<"success" | "failure" | null>(
-    null,
+    null
   );
   const [txStep, setTxStep] = useState<"idle" | "approving" | "buying">("idle");
   const blazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
+    null
   );
 
   const resetBlazeResult = useCallback(() => {
@@ -86,27 +86,26 @@ export default function BlazeryPage() {
     setBlazeResult(null);
   }, []);
 
-  const showBlazeResult = useCallback(
-    (result: "success" | "failure") => {
-      if (blazeResultTimeoutRef.current) {
-        clearTimeout(blazeResultTimeoutRef.current);
-      }
-      setBlazeResult(result);
-      blazeResultTimeoutRef.current = setTimeout(() => {
-        setBlazeResult(null);
-        blazeResultTimeoutRef.current = null;
-      }, 3000);
-    },
-    [],
-  );
+  const showBlazeResult = useCallback((result: "success" | "failure") => {
+    if (blazeResultTimeoutRef.current) {
+      clearTimeout(blazeResultTimeoutRef.current);
+    }
+    setBlazeResult(result);
+    blazeResultTimeoutRef.current = setTimeout(() => {
+      setBlazeResult(null);
+      blazeResultTimeoutRef.current = null;
+    }, 3000);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     const hydrateContext = async () => {
       try {
-        const ctx = (await (sdk as unknown as {
-          context: Promise<MiniAppContext> | MiniAppContext;
-        }).context) as MiniAppContext;
+        const ctx = (await (
+          sdk as unknown as {
+            context: Promise<MiniAppContext> | MiniAppContext;
+          }
+        ).context) as MiniAppContext;
         if (!cancelled) {
           setContext(ctx);
         }
@@ -243,7 +242,7 @@ export default function BlazeryPage() {
       const price = auctionState.price;
       const epochId = toBigInt(auctionState.epochId);
       const deadline = BigInt(
-        Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS,
+        Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS
       );
       const maxPaymentTokenAmount = price;
 
@@ -351,14 +350,17 @@ export default function BlazeryPage() {
     return "BLAZE";
   }, [blazeResult, isConfirming, isWriting, auctionState, txStep]);
 
-  const hasInsufficientLP = auctionState && auctionState.paymentTokenBalance < auctionState.price;
+  const hasInsufficientLP =
+    auctionState && auctionState.paymentTokenBalance < auctionState.price;
 
   // Calculate profit/loss for blazing
   const blazeProfitLoss = useMemo(() => {
     if (!auctionState) return null;
 
     // LP token value in USD
-    const lpValueInEth = Number(formatEther(auctionState.price)) * Number(formatEther(auctionState.paymentTokenPrice));
+    const lpValueInEth =
+      Number(formatEther(auctionState.price)) *
+      Number(formatEther(auctionState.paymentTokenPrice));
     const lpValueInUsd = lpValueInEth * ethUsdPrice;
 
     // WETH value in USD
@@ -377,7 +379,11 @@ export default function BlazeryPage() {
   }, [auctionState, ethUsdPrice]);
 
   const isBlazeDisabled =
-    !auctionState || isWriting || isConfirming || blazeResult !== null || hasInsufficientLP;
+    !auctionState ||
+    isWriting ||
+    isConfirming ||
+    blazeResult !== null ||
+    hasInsufficientLP;
 
   const userDisplayName =
     context?.user?.displayName ?? context?.user?.username ?? "Farcaster user";
@@ -389,33 +395,36 @@ export default function BlazeryPage() {
   const userAvatarUrl = context?.user?.pfpUrl ?? null;
 
   return (
-    <main className="flex h-screen w-screen justify-center overflow-hidden bg-black font-mono text-white">
+    <main className="flex h-screen w-screen justify-center overflow-hidden bg-[#FFFDD0] coming-soon text-white">
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden rounded-[28px] bg-black px-2 pb-4 shadow-inner"
+        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden rounded-[28px] bg-[#FFFDD0] px-2 pb-4 shadow-inner"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
         }}
       >
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden text-black">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-wide">BLAZERY</h1>
+            <h1 className="text-3xl font-bold tracking-wide amatic flex items-center justify-center">
+            <img src="/media/peeples_donuts.png" className="h-[50px] w-[50px]" />
+              PEEPLES DONUTS
+            </h1>
             {context?.user ? (
-              <div className="flex items-center gap-2 rounded-full bg-black px-3 py-1">
+              <div className="flex items-center gap-2 rounded-full bg-[#FFFFF0] px-3 py-1">
                 <Avatar className="h-8 w-8 border border-zinc-800">
                   <AvatarImage
                     src={userAvatarUrl || undefined}
                     alt={userDisplayName}
                     className="object-cover"
                   />
-                  <AvatarFallback className="bg-zinc-800 text-white">
+                  <AvatarFallback className="bg-zinc-800 text-black">
                     {initialsFrom(userDisplayName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="leading-tight text-left">
                   <div className="text-sm font-bold">{userDisplayName}</div>
                   {userHandle ? (
-                    <div className="text-xs text-gray-400">{userHandle}</div>
+                    <div className="text-xs text-gray-600">{userHandle}</div>
                   ) : null}
                 </div>
               </div>
@@ -423,15 +432,15 @@ export default function BlazeryPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <Card className="border-pink-500 bg-black">
+            <Card className="border-[#82AF96] bg-[#FFFFF0]">
               <CardContent className="grid gap-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
                   PAY
                 </div>
-                <div className="text-2xl font-semibold text-pink-400">
+                <div className="text-2xl font-semibold text-[#82AF96]">
                   {auctionPriceDisplay} LP
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-gray-600">
                   $
                   {auctionState
                     ? (
@@ -444,19 +453,20 @@ export default function BlazeryPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-zinc-800 bg-black">
+            <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
               <CardContent className="grid gap-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
                   GET
                 </div>
-                <div className="text-2xl font-semibold text-white">
+                <div className="text-2xl font-semibold">
                   Ξ{claimableDisplay}
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-gray-600">
                   $
                   {auctionState
                     ? (
-                        Number(formatEther(auctionState.wethAccumulated)) * ethUsdPrice
+                        Number(formatEther(auctionState.wethAccumulated)) *
+                        ethUsdPrice
                       ).toFixed(2)
                     : "0.00"}
                 </div>
@@ -466,7 +476,7 @@ export default function BlazeryPage() {
 
           <div className="mt-4 flex flex-col gap-2">
             <Button
-              className="w-full rounded-2xl bg-pink-500 py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-pink-400 disabled:cursor-not-allowed disabled:bg-pink-500/40"
+              className="w-full rounded-2xl bg-[#82AF96] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AF96]/90 disabled:cursor-not-allowed disabled:bg-[#82AF96]/80"
               onClick={handleBlaze}
               disabled={isBlazeDisabled}
             >
@@ -474,9 +484,9 @@ export default function BlazeryPage() {
             </Button>
 
             <div className="flex items-center justify-between px-1">
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-black">
                 Available:{" "}
-                <span className="text-white font-semibold">
+                <span className="text-black font-semibold">
                   {address && auctionState?.paymentTokenBalance
                     ? formatEth(auctionState.paymentTokenBalance, 4)
                     : "0"}
@@ -487,7 +497,7 @@ export default function BlazeryPage() {
                 href="https://app.uniswap.org/explore/pools/base/0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-pink-400 hover:text-pink-300 font-semibold transition-colors"
+                className="text-xs text-[#82AF96] hover:text-[#82AF96]/80 font-semibold transition-colors"
               >
                 Get LP →
               </a>
@@ -495,19 +505,28 @@ export default function BlazeryPage() {
 
             {/* Profit/Loss Warning Message */}
             {blazeProfitLoss && (
-              <div className={cn(
-                "text-center text-sm font-semibold px-2 py-1.5 rounded",
-                blazeProfitLoss.isProfitable ? "text-green-400" : "text-red-400"
-              )}>
+              <div
+                className={cn(
+                  "text-center text-sm font-semibold px-2 py-1.5 rounded",
+                  blazeProfitLoss.isProfitable
+                    ? "text-green-400"
+                    : "text-red-400"
+                )}
+              >
                 {blazeProfitLoss.isProfitable ? (
                   <>
-                    💰 Profitable blaze! You'll receive ${blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for ${blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP
-                    ({blazeProfitLoss.profitLoss >= 0 ? '+' : ''}${blazeProfitLoss.profitLoss.toFixed(2)})
+                    💰 Profitable blaze! You'll receive $
+                    {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
+                    {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP (
+                    {blazeProfitLoss.profitLoss >= 0 ? "+" : ""}$
+                    {blazeProfitLoss.profitLoss.toFixed(2)})
                   </>
                 ) : (
                   <>
-                    ⚠️ Unprofitable blaze! You'll receive ${blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for ${blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP
-                    (${blazeProfitLoss.profitLoss.toFixed(2)})
+                    ⚠️ Unprofitable blaze! You'll receive $
+                    {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
+                    {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP ($
+                    {blazeProfitLoss.profitLoss.toFixed(2)})
                   </>
                 )}
               </div>
