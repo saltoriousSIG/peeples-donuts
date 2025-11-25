@@ -1,34 +1,26 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjI3MjEwOSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQ5REI1QTFjOWZlRjBFMkY5OTVCNDZiMEI3MWJFQmJEOTEyQkYwZTMifQ",
-    "payload": "eyJkb21haW4iOiJnbGF6ZWNvcnAudmVyY2VsLmFwcCJ9",
-    "signature": "Xun297i8tZiQWxuVqo5bKPxSOs1CFDa1lFzDY4dJgOYJ7l16eBnWCJSxwqrgKnR0t74OmCHW7eg5HtIHMz+NZBs="
+    "header": "eyJmaWQiOjQ4MzcxMywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQ2M0IxRThFNzhCMjgwMjdiNDIzRWE2ZjAwNjk1ZjAxYTg0RUZlNzIifQ",
+    "payload": "eyJkb21haW4iOiJwZWVwbGVzZG9udXRzLmNvbSJ9",
+    "signature": "x8FKAH0BRUONpX6bPpA6kNzx7EpwDt/wkszCjCb55dR7M4HrN1K756yj8a9v2eehj+rL8gTPlQDth50K0o4yihw="
   },
   "miniapp": {
     "version": "1",
-    "name": "GlazeCorp",
-    "tagline": "Together we glaze the world",
-    "description": "Command GlazeCorp's donut mine, compete for control, and keep the rewards flowing on Base.",
-    "iconUrl": "https://glazecorp.vercel.app/media/icon.png",
-    "homeUrl": "https://supervictorious-laurel-idyllically.ngrok-free.dev",
-    "splashImageUrl": "https://glazecorp.vercel.app/media/splash.png",
-    "splashBackgroundColor": "#FEE7EC",
-    "heroImageUrl": "https://glazecorp.vercel.app/media/hero.png",
+    "name": "Peeples Donuts",
+    "tagline": "Join the family business",
+    "description": "Join the Peeples family business and help dominate the donut mines!",
+    "iconUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
+    "homeUrl": "https://peeplesdonuts.com",
+    "splashImageUrl": "https://peeplesdonuts.com/media/broll.gif",
+    "splashBackgroundColor": "#FFFDD0",
+    "heroImageUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
     "buttonTitle": "Peeples Donuts",
-    "ogTitle": "We Glaze The World",
-    "ogDescription": "Race the rink to seize the donut mine and keep the glaze flowing.",
-    "ogImageUrl": "https://glazecorp.vercel.app/media/hero.png",
-    "requiredChains": [
-      "eip155:8453"
-    ],
+    "ogTitle": "Join the family business",
+    "ogDescription": "Join the Peeples family business and help dominate the donut mines!",
+    "ogImageUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
+    "requiredChains": ["eip155:8453"],
     "primaryCategory": "finance",
-    "tags": [
-      "gaming",
-      "base",
-      "rewards"
-    ],
-    "actions": [
-      "viewProfile"
-    ]
+    "tags": ["gaming", "base", "rewards"],
+    "actions": ["viewProfile"]
   }
 }
