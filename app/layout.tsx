@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner"
 
 const appDomain = "https://peeplesdonuts.com";
-const heroImageUrl = `${appDomain}/media/peeles_donuts.png`;
+const heroImageUrl = `${appDomain}/media/broll.gif`;
 const splashImageUrl = `${appDomain}/media/peeples_donuts.png`;
 
 const miniAppEmbed = {
