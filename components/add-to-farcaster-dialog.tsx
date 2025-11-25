@@ -146,7 +146,7 @@ export function AddToFarcasterDialog({
 
           {/* Content */}
           <div className="mb-6 text-center">
-            <h2 className="mb-2 text-2xl font-bold text-white">
+            <h2 className="mb-2 text-2xl font-bold text-black">
               Join Peeples Donuts
             </h2>
             <p className="text-sm text-gray-400">
@@ -171,8 +171,8 @@ export function AddToFarcasterDialog({
                 "w-full gap-2 rounded-xl py-6 text-base font-bold transition-all",
                 status === "idle" && "bg-pink-500 hover:bg-pink-400 text-black",
                 status === "success" &&
-                  "bg-green-600 hover:bg-green-600 text-white",
-                status === "error" && "bg-red-600 hover:bg-red-600 text-white"
+                  "bg-green-600 hover:bg-green-600 text-black",
+                status === "error" && "bg-red-600 hover:bg-red-600 text-black"
               )}
             >
               {status === "adding" && (
