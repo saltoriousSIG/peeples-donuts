@@ -113,7 +113,7 @@ export function AddToFarcasterDialog({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm animate-in fade-in-0"
+        className="fixed inset-0 z-50  bg-[#FFFDD0] backdrop-blur-sm animate-in fade-in-0 coming-soon"
         onClick={handleClose}
       />
 
@@ -144,11 +144,11 @@ export function AddToFarcasterDialog({
           {/* Content */}
           <div className="mb-6 text-center">
             <h2 className="mb-2 text-2xl font-bold text-white">
-              Add GlazeCorp
+              Join Peeples DOnuts
             </h2>
             <p className="text-sm text-gray-400">
               Install this Mini App to your Farcaster profile for quick access.
-              Keep the glaze flowing wherever you go!
+              Join the family business!
             </p>
           </div>
 
@@ -217,7 +217,7 @@ export function AddToFarcasterDialog({
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
-              <span>Receive notifications about glaze activity</span>
+              <span>Receive notifications about peeples activity</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
