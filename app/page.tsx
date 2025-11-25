@@ -210,8 +210,6 @@ export default function HomePage() {
     },
   });
 
-  console.log(rawMinerState);
-
   const minerState = useMemo(() => {
     if (!rawMinerState) return undefined;
     return rawMinerState as unknown as MinerState;
@@ -311,7 +309,7 @@ export default function HomePage() {
         Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS
       );
       const maxPrice = price === 0n ? 0n : (price * 105n) / 100n;
-      await writeContract({
+      writeContract({
         account: targetAddress as Address,
         address: CONTRACT_ADDRESSES.multicall as Address,
         abi: MULTICALL_ABI,

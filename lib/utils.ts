@@ -48,3 +48,5 @@ export async function getEthPrice(): Promise<number> {
     return 3500;
   }
 }
+
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

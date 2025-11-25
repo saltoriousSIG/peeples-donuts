@@ -2,18 +2,18 @@ import "@/app/globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 
-const appDomain = "https://glazecorp.vercel.app";
-const heroImageUrl = `${appDomain}/media/hero.png`;
-const splashImageUrl = `${appDomain}/media/splash.png`;
+const appDomain = "https://supervictorious-laurel-idyllically.ngrok-free.dev";
+const heroImageUrl = `${appDomain}/media/broll.gif`;
+const splashImageUrl = `${appDomain}/media/peeples_donuts.png`;
 
 const miniAppEmbed = {
   version: "1",
   imageUrl: heroImageUrl,
   button: {
-    title: "We Glaze The World",
+    title: "Peeples Donuts",
     action: {
       type: "launch_miniapp" as const,
-      name: "GlazeCorp",
+      name: "Peeples Donuts",
       url: appDomain,
       splashImageUrl,
       splashBackgroundColor: "#FEE7EC",
@@ -22,11 +22,11 @@ const miniAppEmbed = {
 };
 
 export const metadata: Metadata = {
-  title: "We Glaze The World",
+  title: "Peeples Donuts - Where you're family",
   description: "Claim the glaze factory and earn donuts on Base.",
   openGraph: {
-    title: "GlazeCorp",
-    description: "Race the hive to control the donut mine and keep the glaze flowing.",
+    title: "Peeples Donuts - Where you're family",
+    description: "Pool your ETH, and join the sweetest yield farm on Base.",
     url: appDomain,
     images: [
       {
