@@ -127,7 +127,7 @@ export function AddToFarcasterDialog({
           <button
             onClick={handleClose}
             disabled={status === "adding"}
-            className="absolute right-4 top-4 rounded-lg p-1 text-gray-400 transition-colors hover:bg-zinc-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute right-4 top-4 rounded-lg p-1 text-gray-800 transition-colors hover:bg-zinc-800 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -137,7 +137,7 @@ export function AddToFarcasterDialog({
           <div className="mb-4 flex justify-center">
             <div className="rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 p-4">
               <img
-                src="/media/icon.png"
+                src="/media/peeples_donuts.png"
                 alt="GlazeCorp"
                 className="h-16 w-16"
               />
@@ -149,7 +149,7 @@ export function AddToFarcasterDialog({
             <h2 className="mb-2 text-2xl font-bold text-black">
               Join Peeples Donuts
             </h2>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-800">
               Install this Mini App to your Farcaster profile for quick access.
               Join the family business!
             </p>
@@ -205,7 +205,7 @@ export function AddToFarcasterDialog({
               onClick={handleClose}
               disabled={status === "adding"}
               variant="ghost"
-              className="w-full text-gray-400 hover:text-white hover:bg-zinc-800"
+              className="w-full text-gray-800 hover:text-white hover:bg-zinc-800"
             >
               Maybe Later
             </Button>
@@ -213,15 +213,15 @@ export function AddToFarcasterDialog({
 
           {/* Benefits list */}
           <div className="mt-6 space-y-2 border-t border-zinc-800 pt-4">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-800">
               <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
               <span>Quick access from your Farcaster apps</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-800">
               <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
               <span>Receive notifications about peeples activity</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-800">
               <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
               <span>Stay connected to the glazery</span>
             </div>
