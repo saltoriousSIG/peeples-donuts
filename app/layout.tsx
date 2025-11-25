@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 
 const appDomain = "https://peeplesdonuts.com";
-const heroImageUrl = `${appDomain}/media/broll.gif`;
+const heroImageUrl = `${appDomain}/media/peeles_donuts.png`;
 const splashImageUrl = `${appDomain}/media/peeples_donuts.png`;
 
 const miniAppEmbed = {
