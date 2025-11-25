@@ -5,12 +5,21 @@ export const STRATEGY_NAMES = [
   "DEGEN",
 ] as const;
 
+
 export enum Strategy {
   CONSERVATIVE = 0,
   MODERATE = 1,
   AGGRESSIVE = 2,
   DEGEN = 3,
 }
+
+export const STRATEGY_NAME_MAPPING: Record<Strategy, string> = {
+  [Strategy.CONSERVATIVE]: "Conservative",
+  [Strategy.MODERATE]: "Moderate",
+  [Strategy.AGGRESSIVE]: "Aggressive",
+  [Strategy.DEGEN]: "Degen",
+} as const;
+
 
 export type Vote = {
   strategy: Strategy;

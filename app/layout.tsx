@@ -2,7 +2,7 @@ import "@/app/globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 
-const appDomain = "https://supervictorious-laurel-idyllically.ngrok-free.dev";
+const appDomain = "https://peeplesdonuts.com";
 const heroImageUrl = `${appDomain}/media/broll.gif`;
 const splashImageUrl = `${appDomain}/media/peeples_donuts.png`;
 

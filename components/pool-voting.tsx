@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Strategy } from "@/types/pool.type";
 import { usePool } from "@/providers/PoolProvider";
 import { STRATEGY_MINUTES_BREAKEVEN } from "@/hooks/useCanBuyGlaze";
+import { STRATEGY_NAME_MAPPING } from "@/types/pool.type";
 
 interface VoteOptionData {
   id: Strategy;
@@ -18,12 +19,16 @@ export function PoolVoting() {
   const [selectedVote, setSelectedVote] = useState<Strategy | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
 
-  const { vote, voteEpoch, votes, hasUserVoted } = usePool();
+  const { vote, voteEpoch, votes, hasUserVoted, config } = usePool();
 
   useEffect(() => {
     setHasVoted(hasUserVoted ?? false);
   }, [hasUserVoted]);
 
+
+  const currentStrategy = useMemo(() => {
+    return config ? STRATEGY_NAME_MAPPING[config.strategy as Strategy] : null;
+  }, [config]);
 
   const voteOptions: VoteOptionData[] = useMemo(() => {
     const voteTypes = [
@@ -97,6 +102,15 @@ export function PoolVoting() {
               5D 12H
             </span>
           </div>
+        </div>
+
+        <div>
+          {currentStrategy && (
+            <p className="text-[10px] text-black font-bold mb-2">
+              Current Strategy:{" "}
+              <span className="font-semibold">{currentStrategy}</span>
+            </p>
+          )}
         </div>
 
         {hasVoted ? (
