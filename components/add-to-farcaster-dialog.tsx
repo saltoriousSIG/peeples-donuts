@@ -135,11 +135,11 @@ export function AddToFarcasterDialog({
 
           {/* Icon */}
           <div className="mb-4 flex justify-center">
-            <div className="rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 p-4">
+            <div className="rounded-2xl bg-gradient-to-br from-[#82AD94] to-[#82AD94]/80 p-4">
               <img
                 src="/media/peeples_donuts.png"
                 alt="GlazeCorp"
-                className="h-16 w-16"
+                className="h-28 w-28"
               />
             </div>
           </div>
@@ -169,7 +169,7 @@ export function AddToFarcasterDialog({
               disabled={status === "adding" || status === "success"}
               className={cn(
                 "w-full gap-2 rounded-xl py-6 text-base font-bold transition-all",
-                status === "idle" && "bg-pink-500 hover:bg-pink-400 text-black",
+                status === "idle" && "bg-[#82AD94] hover:bg-[#82AD94]/80 text-black",
                 status === "success" &&
                   "bg-green-600 hover:bg-green-600 text-black",
                 status === "error" && "bg-red-600 hover:bg-red-600 text-black"
@@ -214,15 +214,15 @@ export function AddToFarcasterDialog({
           {/* Benefits list */}
           <div className="mt-6 space-y-2 border-t border-zinc-800 pt-4">
             <div className="flex items-center gap-2 text-sm text-gray-800">
-              <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[#82AD94]" />
               <span>Quick access from your Farcaster apps</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-800">
-              <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[#82AD94]" />
               <span>Receive notifications about peeples activity</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-800">
-              <div className="h-1.5 w-1.5 rounded-full bg-pink-500" />
+              <div className="h-1.5 w-1.5 rounded-full bg-[#82AD94]" />
               <span>Stay connected to the glazery</span>
             </div>
           </div>
