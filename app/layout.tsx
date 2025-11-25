@@ -1,6 +1,7 @@
 import "@/app/globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
+import { Toaster } from "@/components/ui/sonner"
 
 const appDomain = "https://peeplesdonuts.com";
 const heroImageUrl = `${appDomain}/media/peeles_donuts.png`;
@@ -48,6 +49,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>{children}</Providers>
+        <Toaster richColors />
       </body>
     </html>
   );

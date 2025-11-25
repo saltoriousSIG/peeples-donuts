@@ -26,6 +26,7 @@ import {
 } from "../types/pool.type";
 import { type Address } from "viem";
 import { Strategy, Vote as VoteType } from "../types/pool.type";
+import { toast } from "sonner";
 
 interface PoolContextType {
   config: PoolConfig;
@@ -210,7 +211,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
         chainId: base.id,
       });
     } catch (e: any) {
-      throw new Error(e.message);
+      toast.error(e.message);
     }
   }, [writeContract, isConnected, address]);
 
@@ -240,7 +241,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
           chainId: base.id,
         });
       } catch (e: any) {
-        throw new Error(e.message);
+        toast.error(e.message);
       }
     },
     [writeContractAsync, isConnected, address]
@@ -261,7 +262,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
           chainId: base.id,
         });
       } catch (e: any) {
-        throw new Error(e.message);
+        toast.error(e.message);
       }
     },
     [writeContract, isConnected, address]
@@ -281,7 +282,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
         chainId: base.id,
       });
     } catch (e: any) {
-      throw new Error(e.message);
+      toast.error(e.message);
     }
   }, [writeContract, isConnected, address]);
 
@@ -300,7 +301,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
           chainId: base.id,
         });
       } catch (e: any) {
-        throw new Error(e.message);
+        toast.error(e.message);
       }
     },
     [writeContractAsync, isConnected, address]
