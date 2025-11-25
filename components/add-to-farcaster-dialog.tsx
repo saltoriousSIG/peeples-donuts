@@ -82,7 +82,10 @@ export function AddToFarcasterDialog({
       const errorMsg =
         error instanceof Error ? error.message : "Failed to add app";
 
-      if (errorName === "AddMiniApp.InvalidDomainManifest" || errorMsg.includes("domain")) {
+      if (
+        errorName === "AddMiniApp.InvalidDomainManifest" ||
+        errorMsg.includes("domain")
+      ) {
         setErrorMessage("App must be on production domain with valid manifest");
       } else if (errorMsg.includes("not supported")) {
         setErrorMessage(
@@ -113,13 +116,13 @@ export function AddToFarcasterDialog({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50  bg-[#FFFDD0] backdrop-blur-sm animate-in fade-in-0 coming-soon"
+        className="fixed inset-0 z-50  bg-black/80 backdrop-blur-sm animate-in fade-in-0 coming-soon"
         onClick={handleClose}
       />
 
       {/* Dialog */}
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
-        <div className="relative mx-4 rounded-2xl border border-zinc-800 bg-black p-6 shadow-2xl">
+        <div className="relative mx-4 rounded-2xl border border-zinc-800 bg-[#FFFDD0] p-6 shadow-2xl">
           {/* Close button */}
           <button
             onClick={handleClose}
@@ -144,7 +147,7 @@ export function AddToFarcasterDialog({
           {/* Content */}
           <div className="mb-6 text-center">
             <h2 className="mb-2 text-2xl font-bold text-white">
-              Join Peeples DOnuts
+              Join Peeples Donuts
             </h2>
             <p className="text-sm text-gray-400">
               Install this Mini App to your Farcaster profile for quick access.
@@ -166,8 +169,7 @@ export function AddToFarcasterDialog({
               disabled={status === "adding" || status === "success"}
               className={cn(
                 "w-full gap-2 rounded-xl py-6 text-base font-bold transition-all",
-                status === "idle" &&
-                  "bg-pink-500 hover:bg-pink-400 text-black",
+                status === "idle" && "bg-pink-500 hover:bg-pink-400 text-black",
                 status === "success" &&
                   "bg-green-600 hover:bg-green-600 text-white",
                 status === "error" && "bg-red-600 hover:bg-red-600 text-white"
@@ -243,8 +245,6 @@ export function useAddToFarcasterDialog() {
     isOpen,
     open,
     close,
-    Dialog: () => (
-      <AddToFarcasterDialog showOnFirstVisit={false} />
-    ),
+    Dialog: () => <AddToFarcasterDialog showOnFirstVisit={false} />,
   };
 }
