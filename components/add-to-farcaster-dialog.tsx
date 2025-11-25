@@ -139,7 +139,7 @@ export function AddToFarcasterDialog({
               <img
                 src="/media/peeples_donuts.png"
                 alt="GlazeCorp"
-                className="h-28 w-28"
+                className="h-36 w-36"
               />
             </div>
           </div>
