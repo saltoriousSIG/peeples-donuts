@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MiniAppContext } from "../app/page";
@@ -39,7 +39,6 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
     deposit,
     withdraw,
   } = usePool();
-
 
   const { data: rawMinerState, refetch: refetchMinerState } = useReadContract({
     address: CONTRACT_ADDRESSES.multicall,
@@ -106,6 +105,28 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
     return stripped.slice(0, 2).toUpperCase();
   };
 
+  const { wethUsdValue, donutUsdValue } = useMemo(() => {
+    if (!ethPrice || !rawMinerState || !tvl) {
+      return { wethUsdValue: "0", donutUsdValue: "0" };
+    }
+    return {
+      wethUsdValue: (
+        parseFloat(formatUnits(tvl?.wethTVL || 0n, 18)) * ethPrice
+      ).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      donutUsdValue: (
+        parseFloat(formatUnits(tvl.donutTVL, 18)) *
+        parseFloat(formatUnits(rawMinerState?.donutPrice || 0n, 18)) *
+        ethPrice
+      ).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    };
+  }, [ethPrice, rawMinerState, tvl]);
+
   return (
     <div className="min-h-screen bg-[#FFFDD0] coming-soon">
       <div className="flex flex-1 flex-col text-black p-3">
@@ -158,16 +179,33 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
               <div className="text-[10px] text-gray-800/80 uppercase tracking-[0.1em] font-semibold">
                 TVL
               </div>
-              <div className="text-3xl font-bold text-gray-800 tabular-nums tracking-tight group-hover:text-[#F4A259] transition-colors">
-                {parseFloat(formatUnits(tvl?.wethTVL || 0n, 18)).toFixed(4)}
+              <div className="text-2xl font-bold text-gray-800 tabular-nums tracking-tight group-hover:text-[#F4A259] transition-colors whitespace-nowrap">
+                {parseFloat(formatUnits(tvl?.wethTVL || 0n, 18)).toFixed(4)}{" "}
+                <span className="text-base">$WETH</span>
               </div>
-              <div className="text-base text-gray-800 tabular-nums">
-                $
-                {ethPrice
-                  ? (
-                      parseFloat(formatUnits(tvl?.wethTVL || 0n, 18)) * ethPrice
-                    ).toFixed(2)
-                  : "0"}
+              <div className="text-sm text-gray-800 tabular-nums">
+                ${wethUsdValue}
+              </div>
+              <div className="text-2xl font-bold text-gray-800 tabular-nums tracking-tight group-hover:text-[#F4A259] transition-colors whitespace-nowrap">
+                {parseFloat(
+                  formatUnits(tvl?.donutTVL || 0n, 18)
+                ).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                <span className="text-base">$DONUT</span>
+              </div>
+              <div className="text-sm text-gray-800 tabular-nums">
+                ${donutUsdValue}
+              </div>
+
+              <div>
+                <div className="text-base text-gray-800/80 uppercase tracking-[0.1em] font-semibold whitespace-nowrap">
+                  Total: ${(parseFloat(wethUsdValue) + parseFloat(donutUsdValue)).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
               </div>
             </div>
 
@@ -193,7 +231,15 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
           </div>
         </div>
 
-        <PendingClaim ethPrice={ethPrice as number} donutPrice={ethPrice ? parseFloat(formatUnits(rawMinerState?.donutPrice || 0n, 18)) * ethPrice : 0}/>
+        <PendingClaim
+          ethPrice={ethPrice as number}
+          donutPrice={
+            ethPrice
+              ? parseFloat(formatUnits(rawMinerState?.donutPrice || 0n, 18)) *
+                ethPrice
+              : 0
+          }
+        />
 
         <BuyKingGlazer />
 
