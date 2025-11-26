@@ -424,13 +424,13 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
                 num: 3,
                 color: "#BC4B51",
                 title: "Buying",
-                desc: "Pool buys King Glazer when target price hits based on strategy vote. Anyone can trigger the buy for $PEEPLES reward, or our bot handles it. Leftover capital + rewards compound automatically.",
+                desc: "King Glazer is avaialable to buy when target price hits based on strategy vote. Anyone can trigger the buy for $PEEPLES reward. Leftover capital + rewards compound automatically.",
               },
               {
                 num: 4,
                 color: "#F4A259",
                 title: "Weekly Strategy Votes",
-                desc: "Hold 500k+ $PEEPLES to vote on pool risk strategy. Choose Conservative (≤30min break-even), Moderate (≤60min), or Degen (≤120min). One vote per address.",
+                desc: "Hold 10M $PEEPLES to vote on pool risk strategy. Choose Conservative (≤30min break-even), Moderate (≤60min), Aggressive (≤120min), or Degen (≤200min). One vote per address.",
               },
               {
                 num: 5,
