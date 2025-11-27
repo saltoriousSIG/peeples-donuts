@@ -126,7 +126,10 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
       }),
     };
   }, [ethPrice, rawMinerState, tvl]);
+  console.log(wethUsdValue, "weth value");
+  console.log(donutUsdValue, "donut value");
 
+  console.log(parseInt(wethUsdValue), "weth usd value");
   return (
     <div className="min-h-screen bg-[#FFFDD0] coming-soon">
       <div className="flex flex-1 flex-col text-black p-3">
@@ -201,7 +204,7 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
 
               <div>
                 <div className="text-base text-gray-800/80 uppercase tracking-[0.1em] font-semibold whitespace-nowrap">
-                  Total: ${(parseFloat(wethUsdValue) + parseFloat(donutUsdValue)).toLocaleString("en-US", {
+                  Total: ${(parseFloat(wethUsdValue.replace(/,/g, "")) + parseFloat(donutUsdValue.replace(/,/g, ""))).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -403,7 +406,8 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
 
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-[#3D405B]/10 p-7 shadow-sm hover:shadow-md transition-all duration-300">
           <h3 className="text-lg font-bold text-[#3D405B] mb-6 tracking-tight">
-            Rules for the Pool
+            k:w
+            ddRules for the Pool
           </h3>
 
           <div className="space-y-5">
