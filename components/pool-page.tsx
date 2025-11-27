@@ -406,8 +406,7 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
 
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-[#3D405B]/10 p-7 shadow-sm hover:shadow-md transition-all duration-300">
           <h3 className="text-lg font-bold text-[#3D405B] mb-6 tracking-tight">
-            k:w
-            ddRules for the Pool
+            Rules for the Pool
           </h3>
 
           <div className="space-y-5">
