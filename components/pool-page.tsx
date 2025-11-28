@@ -311,7 +311,7 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
                     if (pct === "MAX") {
                       setAmount(
                         balance
-                          ? parseFloat(formatUnits(balance, 18)).toFixed(4)
+                          ? parseFloat(formatUnits(balance, 18)).toString()
                           : "0"
                       );
                       return;
