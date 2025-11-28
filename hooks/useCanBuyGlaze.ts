@@ -9,7 +9,7 @@ import { Strategy } from "@/types/pool.type";
 export const STRATEGY_MINUTES_BREAKEVEN = {
   [Strategy.CONSERVATIVE]: 30,
   [Strategy.MODERATE]: 60,
-  [Strategy.AGGRESSIVE]: 120,
+  [Strategy.AGGRESSIVE]: 132,
   [Strategy.DEGEN]: 200,
 }
 
