@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
       }
     }
   } catch (e: any) {
+    console.log("Error in cron job:", e);
     return NextResponse.json(
       { error: e.message || "Unknown error" },
       { status: 500 }
