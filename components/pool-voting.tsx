@@ -94,7 +94,7 @@ export function PoolVoting() {
               Strategy Vote
             </h3>
             <p className="text-[12px] text-gray-100/70 mt-0.5">
-              Vote for next week&amp;s risk tolerance
+              Vote for next week's risk tolerance
             </p>
           </div>
           <div className="px-2 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
