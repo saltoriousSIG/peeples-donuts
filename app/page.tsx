@@ -226,7 +226,6 @@ export default function HomePage() {
       refetchInterval: 3_000,
     },
   });
-  console.log(rawMinerState);
 
   const minerState = useMemo(() => {
     if (!rawMinerState) return undefined;
@@ -579,7 +578,6 @@ export default function HomePage() {
   const handleViewKingGlazerProfile = useCallback(() => {
     const fid = neynarUser?.user?.fid;
     const username = neynarUser?.user?.username;
-    console.log("King Glazer clicked, FID:", fid, "Username:", username);
 
     if (username) {
       // Open Farcaster profile URL using username (cleaner URL)
