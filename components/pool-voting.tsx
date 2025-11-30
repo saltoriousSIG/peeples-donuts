@@ -5,6 +5,7 @@ import { Strategy } from "@/types/pool.type";
 import { usePool } from "@/providers/PoolProvider";
 import { STRATEGY_MINUTES_BREAKEVEN } from "@/hooks/useCanBuyGlaze";
 import { STRATEGY_NAME_MAPPING } from "@/types/pool.type";
+import SundayCountdown from "./sunday-countdown";
 
 interface VoteOptionData {
   id: Strategy;
@@ -99,7 +100,7 @@ export function PoolVoting() {
           </div>
           <div className="px-2 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
             <span className="text-[9px] font-semibold text-gray-100 tracking-wider">
-              5D 12H
+              <SundayCountdown /> 
             </span>
           </div>
         </div>
