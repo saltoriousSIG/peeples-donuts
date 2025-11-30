@@ -124,16 +124,16 @@ export function PoolVoting() {
               </p>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 text-black">
               {voteOptions.map((option) => {
-                const percentage = (option.votes / votes.length) * 100; 
+                const percentage = ((option.votes / votes.length) * 100).toFixed(2); 
                 return (
                   <div
                     key={option.id}
                     className="flex items-center justify-between p-1.5 bg-white/15 backdrop-blur-sm rounded-lg border border-white/20"
                   >
                     <div className="flex items-center gap-1.5 flex-1">
-                      <span className="text-[10px] font-bold text-gray-100">
+                      <span className="text-[10px] font-bold">
                         {option.label}
                       </span>
                       <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
@@ -143,7 +143,7 @@ export function PoolVoting() {
                         />
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-100/90 tabular-nums ml-2">
+                    <span className="text-[10px] font-bold tabular-nums ml-2">
                       {percentage}%
                     </span>
                   </div>

@@ -567,7 +567,7 @@ export const MANAGE = [
   },
   {
     inputs: [],
-    name: "onOutbid",
+    name: "checkAndFinalize",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -1372,6 +1372,13 @@ export const VOTE = [
     ],
     name: "VoteCast",
     type: "event",
+  },
+  {
+    inputs: [],
+    name: "updateEpoch",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
   {
     inputs: [
