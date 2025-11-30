@@ -94,6 +94,22 @@ const initialsFrom = (label?: string) => {
   return stripped.slice(0, 2).toUpperCase();
 };
 
+const formatGlazeTime = (seconds: number): string => {
+  if (seconds < 0) return "0s";
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  }
+  return `${secs}s`;
+};
+
 export default function HomePage() {
   const readyRef = useRef(false);
   const autoConnectAttempted = useRef(false);
@@ -106,6 +122,7 @@ export default function HomePage() {
   const glazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  const [glazeElapsedSeconds, setGlazeElapsedSeconds] = useState<number>(0);
   const resetGlazeResult = useCallback(() => {
     if (glazeResultTimeoutRef.current) {
       clearTimeout(glazeResultTimeoutRef.current);
@@ -224,6 +241,26 @@ export default function HomePage() {
     }
   }, [minerState]);
 
+  useEffect(() => {
+    if (!minerState) {
+      setGlazeElapsedSeconds(0);
+      return;
+    }
+
+    // Calculate initial elapsed time
+    const startTimeSeconds = Number(minerState.startTime);
+    const initialElapsed = Math.floor(Date.now() / 1000) - startTimeSeconds;
+    setGlazeElapsedSeconds(initialElapsed);
+
+    // Update every second
+    const interval = setInterval(() => {
+      const currentElapsed = Math.floor(Date.now() / 1000) - startTimeSeconds;
+      setGlazeElapsedSeconds(currentElapsed);
+    }, 1_000);
+
+    return () => clearInterval(interval);
+  }, [minerState]);
+
   const {
     data: txHash,
     writeContract,
@@ -284,6 +321,10 @@ export default function HomePage() {
     staleTime: 60_000,
     retry: false,
   });
+
+  const glazeTimeDisplay = minerState
+    ? formatGlazeTime(glazeElapsedSeconds)
+    : "—";
 
   const handleGlaze = useCallback(async () => {
     if (!minerState) return;
@@ -667,6 +708,14 @@ export default function HomePage() {
 
               {/* Stats Section - Glazed and PNL stacked */}
               <div className="flex flex-col gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-700 w-10 text-right">
+                    TIME
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500">
+                    {glazeTimeDisplay}
+                  </div>
+                </div>
                 {/* Glazed Row */}
                 <div className="flex items-center gap-2">
                   <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600 w-12 text-right">
