@@ -69,7 +69,7 @@ export function BuyKingGlazer({}: BuyKingGlazerProps) {
             <span className="text-sm text-black/80 mt-1">
               Trigger the purchase and earn{" "}
               <Badge className="font-bold flex items-center justify-center bg-green-500 w-fit text-black p-0 pt-1 px-1">
-                +{formatUnits(config?.reward?.peeplesReward || 0n, 18)} $PEEPLES
+                +{parseFloat(formatUnits(config?.reward?.peeplesReward || 0n, 18)).toFixed(0)} $PEEPLES
               </Badge>
             </span>
           </div>
