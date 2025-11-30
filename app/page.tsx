@@ -226,6 +226,7 @@ export default function HomePage() {
       refetchInterval: 3_000,
     },
   });
+  console.log(rawMinerState);
 
   const minerState = useMemo(() => {
     if (!rawMinerState) return undefined;
