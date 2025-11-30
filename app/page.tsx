@@ -860,19 +860,6 @@ export default function HomePage() {
                   <span>🍩</span>
                   <span>{donutBalanceDisplay}</span>
                 </div>
-                <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-600 mb-0">Mined</span>
-                  <div className="flex items-center gap-1">
-                    <span>🍩</span>
-                    <span className="font-semibold">
-                      {address && accountData?.mined
-                        ? Number(accountData.mined).toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })
-                        : "0"}
-                    </span>
-                  </div>
-                </div>
               </div>
 
               {/* Middle Column - ETH Balance & Spent */}
@@ -880,19 +867,6 @@ export default function HomePage() {
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold">
                   <span>Ξ</span>
                   <span>{ethBalanceDisplay}</span>
-                </div>
-                <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-600 mb-0">Spent</span>
-                  <div className="flex items-center gap-1">
-                    <span>Ξ</span>
-                    <span className="font-semibold">
-                      {address && accountData?.spent
-                        ? Number(accountData.spent).toLocaleString(undefined, {
-                            maximumFractionDigits: 4,
-                          })
-                        : "0"}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -905,19 +879,6 @@ export default function HomePage() {
                       ? formatEth(minerState.wethBalance, 4)
                       : "—"}
                   </span>
-                </div>
-                <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-600 mb-0">Earned</span>
-                  <div className="flex items-center gap-1">
-                    <span>wΞ</span>
-                    <span className="font-semibold">
-                      {address && accountData?.earned
-                        ? Number(accountData.earned).toLocaleString(undefined, {
-                            maximumFractionDigits: 4,
-                          })
-                        : "0"}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
