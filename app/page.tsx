@@ -535,7 +535,7 @@ export default function HomePage() {
     ? (() => {
         const halfInitPrice = minerState.initPrice / 2n;
         const pnl =
-          minerState.price > minerState.initPrice
+          minerState.price < minerState.initPrice
             ? (minerState.price * 80n) / 100n - halfInitPrice
             : minerState.price - halfInitPrice;
         const pnlEth = Number(formatEther(pnl >= 0n ? pnl : -pnl));
@@ -706,7 +706,7 @@ export default function HomePage() {
               </div>
 
               {/* Stats Section - Glazed and PNL stacked */}
-              <div className="flex flex-col gap-1.5 flex-shrink-0">
+              <div className="flex flex-col gap-1.5 flex-shrink-0 items-end">
                 <div className="flex items-center gap-1.5">
                   <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-700 w-10 text-right">
                     TIME
@@ -740,7 +740,7 @@ export default function HomePage() {
                         (() => {
                           const halfInitPrice = minerState.initPrice / 2n;
                           const pnl =
-                            minerState.price > minerState.initPrice
+                            minerState.price < minerState.initPrice
                               ? (minerState.price * 80n) / 100n - halfInitPrice
                               : minerState.price - halfInitPrice;
                           return pnl >= 0n;
@@ -753,7 +753,7 @@ export default function HomePage() {
                       ? (() => {
                           const halfInitPrice = minerState.initPrice / 2n;
                           const pnl =
-                            minerState.price > minerState.initPrice
+                            minerState.price < minerState.initPrice
                               ? (minerState.price * 80n) / 100n - halfInitPrice
                               : minerState.price - halfInitPrice;
                           const sign = pnl >= 0n ? "+" : "-";
@@ -763,6 +763,49 @@ export default function HomePage() {
                       : "Ξ—"}
                   </div>
                   <div className="text-[10px] text-gray-600">{pnlUsdValue}</div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600 w-12 text-right whitespace-nowrap">
+                    Total PNL
+                  </div>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold flex items-center jusify-center",
+                      glazedUsdValue &&
+                        pnlUsdValue &&
+                        (() => {
+                          const totalPnl =
+                            parseFloat(glazedUsdValue) +
+                            parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
+                              (pnlUsdValue.startsWith("-") ? -1 : 1);
+                          return totalPnl >= 0;
+                        })()
+                        ? "text-green-400"
+                        : "text-red-400"
+                    )}
+                  >
+                    <span className="pb-0.5">
+                      {(() => {
+                        const totalPnl =
+                          parseFloat(glazedUsdValue) +
+                          parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
+                            (pnlUsdValue.startsWith("-") ? -1 : 1);
+                        return totalPnl >= 0 ? "+" : "-";
+                      })()}{" "}
+                    </span>
+                    <span>$ </span>
+                    <span>
+                      {Math.abs(
+                        parseFloat(glazedUsdValue) +
+                          parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
+                            (pnlUsdValue.startsWith("-") ? -1 : 1)
+                      ).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
