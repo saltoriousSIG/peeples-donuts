@@ -75,23 +75,6 @@ export function ShareModal({ isOpen, onClose, action, details }: ShareModalProps
             </button>
           </div>
 
-          {/* Amount display if applicable */}
-          {details.amount && (
-            <div
-              className="rounded-xl p-4 text-center animate-in slide-in-from-bottom-2 duration-300 delay-100"
-              style={{ backgroundColor: `${config.color}15`, border: `1px solid ${config.color}30` }}
-            >
-              <div
-                className="text-[10px] uppercase tracking-widest font-semibold mb-1"
-                style={{ color: `${config.color}` }}
-              >
-                {action === "king-glazer" ? "Reward Earned" : "Amount"}
-              </div>
-              <div className="text-2xl font-bold tabular-nums" style={{ color: config.color }}>
-                {details.amount}
-              </div>
-            </div>
-          )}
 
           <div className="animate-in slide-in-from-bottom-2 duration-300 delay-150">
             <p className="text-[10px] uppercase tracking-widest font-semibold text-[#3D405B]/50 mb-2">Your cast</p>
