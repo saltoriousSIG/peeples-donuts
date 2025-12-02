@@ -661,7 +661,7 @@ export default function HomePage() {
               {/* King Glazer Section */}
               <div
                 className={cn(
-                  "flex items-center gap-2 min-w-0 flex-1",
+                  "flex flex-col items-start gap-2 min-w-0 flex-1",
                   neynarUser?.user?.fid &&
                     "cursor-pointer hover:opacity-80 transition-opacity"
                 )}
@@ -671,37 +671,66 @@ export default function HomePage() {
                     : undefined
                 }
               >
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarImage
-                    src={occupantDisplay.avatarUrl || undefined}
-                    alt={occupantDisplay.primary}
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-zinc-800 text-gray-600 text-xs uppercase">
-                    {minerState ? (
-                      occupantFallbackInitials
-                    ) : (
-                      <CircleUserRound className="h-4 w-4" />
-                    )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="leading-tight text-left min-w-0 flex-1">
-                  <div
-                    className={cn(
-                      "text-[9px] font-bold uppercase tracking-[0.08em]",
-                      occupantDisplay.isYou ? "text-[#82AD94]" : "text-gray-600"
-                    )}
-                  >
-                    KING GLAZER
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-gray-700 truncate">
-                    <span className="truncate">{occupantDisplay.primary}</span>
-                  </div>
-                  {occupantDisplay.secondary ? (
-                    <div className="text-[10px] text-gray-600 truncate">
-                      {occupantDisplay.secondary}
+                <div className="flex items-center gap-2 w-full min-w-0">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage
+                      src={occupantDisplay.avatarUrl || undefined}
+                      alt={occupantDisplay.primary}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-zinc-800 text-gray-600 text-xs uppercase">
+                      {minerState ? (
+                        occupantFallbackInitials
+                      ) : (
+                        <CircleUserRound className="h-4 w-4" />
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="leading-tight text-left min-w-0">
+                    <div
+                      className={cn(
+                        "text-[9px] font-bold uppercase tracking-[0.08em]",
+                        occupantDisplay.isYou
+                          ? "text-[#82AD94]"
+                          : "text-gray-600"
+                      )}
+                    >
+                      KING GLAZER
                     </div>
-                  ) : null}
+                    <div className="flex items-center gap-1 text-sm text-gray-700 truncate">
+                      <span className="truncate">
+                        {occupantDisplay.primary}
+                      </span>
+                    </div>
+                    {occupantDisplay.secondary ? (
+                      <div className="text-[10px] text-gray-600 truncate">
+                        {occupantDisplay.secondary}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-0.5 w-full">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600  text-left whitespace-nowrap">
+                    PURCHASED FOR:
+                  </div>
+                  <div className="flex items-center justify-center gap-0.5">
+                    <div className="text-[10px] text-gray-600 whitespace-nowrap">
+                      {parseFloat(
+                        formatUnits((minerState?.initPrice || 0n) / 2n, 18)
+                      ).toFixed(5)}{" "}
+                      $ETH
+                    </div>
+                    <div className="text-[10px] text-gray-600 whitespace-nowrap">
+                      ($
+                      {minerState
+                        ? (
+                            Number(formatEther(minerState.initPrice / 2n)) *
+                            ethUsdPrice
+                          ).toFixed(2)
+                        : "0.00"})
+                    </div>
+                  </div>
                 </div>
               </div>
 
