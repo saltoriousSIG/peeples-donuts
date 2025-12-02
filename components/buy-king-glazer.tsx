@@ -4,10 +4,13 @@ import { useCanBuyGlaze } from "@/hooks/useCanBuyGlaze";
 import { Badge } from "@/components/ui/badge";
 import { usePool } from "@/providers/PoolProvider";
 import { formatUnits } from "viem";
+import { sdk } from "@farcaster/miniapp-sdk";
 
-interface BuyKingGlazerProps {}
+interface BuyKingGlazerProps {
+  onBuy: () => void;
+}
 
-export function BuyKingGlazer({}: BuyKingGlazerProps) {
+export function BuyKingGlazer({ onBuy }: BuyKingGlazerProps) {
   const { canBuy, currentBreakEven, targetBreakEven } = useCanBuyGlaze();
   const { config, buyKingGlazer, state } = usePool();
   if (state?.isActive) {
@@ -115,7 +118,10 @@ export function BuyKingGlazer({}: BuyKingGlazerProps) {
 
         {/* Action button */}
         <Button
-          onClick={buyKingGlazer}
+          onClick={async() => { 
+            await buyKingGlazer();
+            onBuy();
+          }}
           disabled={!canBuy}
           className="w-full bg-white text-[#BC4B51] hover:bg-white/95 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 font-bold text-sm tracking-wide h-10 rounded-lg shadow-lg hover:shadow-xl transition-all"
         >

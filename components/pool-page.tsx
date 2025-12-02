@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PendingClaim } from "./pending-claim";
 import { parseUnits } from "viem";
 import { useAccount } from "wagmi";
+import { ShareModal, ShareAction } from "./share-modal";
 import { zeroAddress } from "viem";
 
 interface PoolsPageProps {}
@@ -26,6 +27,13 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
   const [isInPool, setIsInPool] = useState(true);
   const [context, setContext] = useState<MiniAppContext | null>(null);
   const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
+  const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
+  const [shareAction, setShareAction] = useState<ShareAction>();
+  const [shareDetails, setShareActionDetails] = useState<{ embed: string; message: string }>({
+    message: "",
+    embed: ""
+  });
+
 
   const { address } = useAccount();
 
@@ -126,10 +134,14 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
       }),
     };
   }, [ethPrice, rawMinerState, tvl]);
-  console.log(wethUsdValue, "weth value");
-  console.log(donutUsdValue, "donut value");
 
-  console.log(parseInt(wethUsdValue), "weth usd value");
+  const handleShareDeposit = () => {
+    sdk.actions.composeCast({
+      text: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`, 
+      embeds: ["https://peeplesdonuts.com/pool"],
+    })
+  }
+
   return (
     <div className="min-h-screen bg-[#FFFDD0] coming-soon">
       <div className="flex flex-1 flex-col text-black p-3">
@@ -244,7 +256,14 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
           }
         />
 
-        <BuyKingGlazer />
+        <BuyKingGlazer onBuy={() => {
+          setShareAction("king-glazer")
+          setShareActionDetails({
+            message: `I just bought King Glazer for the Peeples Pool, and earned 25K $PEEPLES 🍩👑 Let's get glazed together`,
+            embed: "https://peeplesdonuts.com/pool"
+          });
+          setShareModalOpen(true);
+        }} />
 
         <PoolVoting />
 
@@ -302,7 +321,6 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
                   key={pct}
                   className="flex-1 px-4 py-2.5 rounded-lg bg-[#3D405B]/5 hover:bg-[#3D405B]/10 hover:scale-105 active:scale-95 text-xs font-bold text-[#3D405B]/70 hover:text-[#3D405B] transition-all"
                   onClick={() => {
-                    console.log(`Set amount to ${pct}`);
                     const balance =
                       mode === "deposit" ? wethBalance : shareTokenBalance;
                     if (!balance) {
@@ -388,7 +406,13 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
             <Button
               onClick={async () => {
                 if (mode === "deposit") {
-                  deposit(parseInt(parseUnits(amount || "0", 18).toString()));
+                  await deposit(parseInt(parseUnits(amount || "0", 18).toString()));
+                  setShareAction("deposit")
+                  setShareActionDetails({
+                    message: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`,
+                    embed: "https://peeplesdonuts.com/pool"
+                  });
+                  setShareModalOpen(true);
                 } else if (mode === "withdraw") {
                   withdraw(parseInt(parseUnits(amount || "0", 18).toString()));
                 }
@@ -467,6 +491,15 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
         </div>
       </div>
       <NavBar />
+      <ShareModal 
+        isOpen={shareModalOpen} 
+        onClose={() => {
+          setShareModalOpen(false)
+          setShareAction(undefined);
+          setShareActionDetails({ embed: "", message: "" });
+        }}  
+        action={shareAction as ShareAction} 
+        details={shareDetails} />
     </div>
   );
 };

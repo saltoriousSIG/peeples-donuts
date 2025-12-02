@@ -42,9 +42,9 @@ interface PoolContextType {
   hasUserVoted?: boolean;
   pendingClaim?: PendingClaim;
   claim: () => void;
-  deposit: (amount: number) => void;
+  deposit: (amount: number) => Promise<void>;
   withdraw: (amount: number) => void;
-  buyKingGlazer: () => void;
+  buyKingGlazer: () => Promise<void>;
   vote: (strategy: Strategy) => Promise<void>;
 }
 
@@ -197,12 +197,12 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
       chainId: base.id,
     });
 
-  const buyKingGlazer = useCallback(() => {
+  const buyKingGlazer = useCallback(async() => {
     try {
       if (!isConnected || !address) {
         throw new Error("Wallet not connected");
       }
-      writeContract({
+      await writeContractAsync({
         account: address as Address,
         address: CONTRACT_ADDRESSES.pool as Address,
         abi: MANAGE,
