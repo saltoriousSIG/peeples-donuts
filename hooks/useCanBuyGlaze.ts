@@ -5,13 +5,7 @@ import { zeroAddress } from "viem";
 import {usePool} from "../providers/PoolProvider";
 import { formatUnits } from "viem";
 import { Strategy } from "@/types/pool.type";
-
-export const STRATEGY_MINUTES_BREAKEVEN = {
-  [Strategy.CONSERVATIVE]: 30,
-  [Strategy.MODERATE]: 60,
-  [Strategy.AGGRESSIVE]: 130,
-  [Strategy.DEGEN]: 200,
-}
+import { STRATEGY_MINUTES_BREAKEVEN } from "@/lib/utils";
 
 export const useCanBuyGlaze = () => {
   const { config } = usePool();

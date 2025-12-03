@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { Strategy } from "@/types/pool.type";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -47,6 +48,13 @@ export async function getEthPrice(): Promise<number> {
     // Fallback to a reasonable default if fetch fails
     return 3500;
   }
+}
+
+export const STRATEGY_MINUTES_BREAKEVEN:Record<Strategy, number> = {
+  [Strategy.CONSERVATIVE]: 30,
+  [Strategy.MODERATE]: 60,
+  [Strategy.AGGRESSIVE]: 145,
+  [Strategy.DEGEN]: 200,
 }
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -27,6 +27,7 @@ import {
 import { type Address } from "viem";
 import { Strategy, Vote as VoteType } from "../types/pool.type";
 import { toast } from "sonner";
+import toggleNotificationSettng from "@/lib/toggleNotificationSetting";
 
 interface PoolContextType {
   config: PoolConfig;
@@ -181,8 +182,6 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
     },
   });
 
-  console.log(pendingClaim, "pending claim");
-
   const {
     data: txHash,
     writeContract,
@@ -210,6 +209,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
         args: [""],
         chainId: base.id,
       });
+      await toggleNotificationSettng();
     } catch (e: any) {
       toast.error(e.message);
     }
