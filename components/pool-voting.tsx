@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Strategy } from "@/types/pool.type";
 import { usePool } from "@/providers/PoolProvider";
-import { STRATEGY_MINUTES_BREAKEVEN } from "@/hooks/useCanBuyGlaze";
+import { STRATEGY_MINUTES_BREAKEVEN } from "@/lib/utils";
 import { STRATEGY_NAME_MAPPING } from "@/types/pool.type";
 import SundayCountdown from "./sunday-countdown";
 
