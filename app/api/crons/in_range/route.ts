@@ -21,21 +21,31 @@ export async function GET(req: NextRequest) {
   try {
     const hasAlreadyBeenNotified = await redis.get("notification_sent");
 
-    if (!hasAlreadyBeenNotified) {
-      const { publicClient } = setupAdminWallet();
+    const { publicClient } = setupAdminWallet();
+    const minerState = await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.multicall,
+      abi: MULTICALL_ABI,
+      functionName: "getMiner",
+      args: [zeroAddress],
+    });
 
+    if (hasAlreadyBeenNotified === "true" || hasAlreadyBeenNotified) {
+      if(minerState.miner !== CONTRACT_ADDRESSES.pool) {
+        await redis.del("notification_sent");
+        return NextResponse.json({
+          success: true,
+          message: "reset notification flag",
+        });
+      }
+    }
+
+
+    if (hasAlreadyBeenNotified === "false" || !hasAlreadyBeenNotified) {
       const poolConfig = await publicClient.readContract({
         address: CONTRACT_ADDRESSES.pool as `0x${string}`,
         abi: DATA,
         functionName: "getConfig",
         args: [],
-      });
-
-      const minerState = await publicClient.readContract({
-        address: CONTRACT_ADDRESSES.multicall,
-        abi: MULTICALL_ABI,
-        functionName: "getMiner",
-        args: [zeroAddress],
       });
 
       const poolWETHBalance = await publicClient.readContract({
@@ -102,7 +112,10 @@ export async function GET(req: NextRequest) {
           message: "notification sent",
         });
       }
-      return NextResponse.json({ success: true, message: "pool not in range" });
+      return NextResponse.json({
+        success: true,
+        message: "pool not in range",
+      });
     }
 
     return NextResponse.json({ success: true, message: "alredy notified" });
