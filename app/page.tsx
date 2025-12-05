@@ -1,5 +1,4 @@
 "use client";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { sdk } from "@farcaster/miniapp-sdk";
@@ -13,7 +12,6 @@ import {
 } from "wagmi";
 import { base } from "wagmi/chains";
 import { formatEther, formatUnits, zeroAddress, type Address } from "viem";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +20,7 @@ import { cn, getEthPrice } from "@/lib/utils";
 import { useAccountData } from "@/hooks/useAccountData";
 import { NavBar } from "@/components/nav-bar";
 import { AddToFarcasterDialog } from "@/components/add-to-farcaster-dialog";
+import { useRouter } from "next/navigation";
 
 export type MiniAppContext = {
   user?: {
@@ -112,6 +111,7 @@ const formatGlazeTime = (seconds: number): string => {
 
 export default function HomePage() {
   const readyRef = useRef(false);
+  const router = useRouter()
   const autoConnectAttempted = useRef(false);
   const [context, setContext] = useState<MiniAppContext | null>(null);
   const [customMessage, setCustomMessage] = useState("");
@@ -607,6 +607,18 @@ export default function HomePage() {
       : "";
   const userAvatarUrl = context?.user?.pfpUrl ?? null;
 
+  const onGoToPool = () => {
+    router.push("/pool");
+  }
+
+  const handleSwap = async() => {
+    sdk.actions.swapToken({
+      sellToken:"eip155:8453/erc20:0x4200000000000000000000000000000000000006", 
+      buyToken:"eip155:8453/erc20:0x0eb9d965DBEfbfB131216A4250A29C9b0693Cb07",
+    });
+  }
+
+
   return (
     <main className="flex h-screen w-screen justify-center overflow-hidden bg-[#FFFDD0] coming-soon text-black">
       {/* Add to Farcaster Dialog - shows on first visit */}
@@ -728,7 +740,8 @@ export default function HomePage() {
                             Number(formatEther(minerState.initPrice / 2n)) *
                             ethUsdPrice
                           ).toFixed(2)
-                        : "0.00"})
+                        : "0.00"}
+                      )
                     </div>
                   </div>
                 </div>
@@ -840,6 +853,15 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
+          <div className="w-full h-fit mt-2 flex items-center justify-center gap-x-2">
+            <Button onClick={() => onGoToPool()} variant="default" className="w-full h-fit bg-[#82AD94] text-black hover:text-white">
+              Join the Pool!
+            </Button>
+            <Button onClick={() => handleSwap()} variant="default" className="w-full h-fit bg-[#82AD94] text-black hover:text-white">
+              Buy $PEEPLES
+            </Button>
+          </div>
+
           <div className="grid grid-cols-2 gap-2 mt-4">
             <Card className="border-zinc-800 bg-[#FFFFF0]">
               <CardContent className="grid gap-1.5 p-2.5">
@@ -875,13 +897,14 @@ export default function HomePage() {
               </CardContent>
             </Card>
           </div>
+
           <div className="relative mt-1 overflow-hidden bg-[#FFFDD0]">
             <div className="flex animate-scroll whitespace-nowrap py-1 text-sm font-bold text-[#82AD94]">
               {Array.from({ length: 1000 }).map((_, i) => (
                 <span key={i} className="inline-block px-8">
                   {minerState?.uri && minerState.uri.trim() !== ""
                     ? minerState.uri
-                    : "We Glaze The World"}
+                    : "PEEPLES DONUTS"}
                 </span>
               ))}
             </div>
