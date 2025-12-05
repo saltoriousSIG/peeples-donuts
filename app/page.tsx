@@ -853,16 +853,16 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <div className="w-full h-fit mt-2 flex items-center justify-center gap-x-2">
-            <Button onClick={() => onGoToPool()} variant="default" className="w-full h-fit bg-[#82AD94] text-black hover:text-white">
+          <div className="w-full h-fit mt-1.5 flex items-center justify-center gap-x-2">
+            <Button onClick={() => onGoToPool()} variant="default" className="w-full h-[25px] bg-[#82AD94] text-black hover:text-white">
               Join the Pool!
             </Button>
-            <Button onClick={() => handleSwap()} variant="default" className="w-full h-fit bg-[#82AD94] text-black hover:text-white">
+            <Button onClick={() => handleSwap()} variant="default" className="w-full h-[25px] bg-[#82AD94] text-black hover:text-white">
               Buy $PEEPLES
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="grid grid-cols-2 gap-2 mt-2">
             <Card className="border-zinc-800 bg-[#FFFFF0]">
               <CardContent className="grid gap-1.5 p-2.5">
                 <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-600">
@@ -899,7 +899,7 @@ export default function HomePage() {
           </div>
 
           <div className="relative mt-1 overflow-hidden bg-[#FFFDD0]">
-            <div className="flex animate-scroll whitespace-nowrap py-1 text-sm font-bold text-[#82AD94]">
+            <div className="flex animate-scroll whitespace-nowrap py-0.5 text-sm font-bold text-[#82AD94]">
               {Array.from({ length: 1000 }).map((_, i) => (
                 <span key={i} className="inline-block px-8">
                   {minerState?.uri && minerState.uri.trim() !== ""
@@ -929,12 +929,12 @@ export default function HomePage() {
               onChange={(e) => setCustomMessage(e.target.value)}
               placeholder="Add a message (optional)"
               maxLength={100}
-              className="w-full text-black rounded-lg border border-zinc-800 bg-[#FFFFF0] px-3 py-2 text-sm coming-soon placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full text-black rounded-lg border border-zinc-800 bg-[#FFFFF0] px-3 py-2 text-sm coming-soon placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 h-[30px]"
               disabled={isGlazeDisabled}
             />
 
             <Button
-              className="w-full rounded-2xl bg-[#82AD94] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AD94]/70 disabled:cursor-not-allowed disabled:bg-pink-500/40"
+              className="w-full rounded-2xl bg-[#82AD94] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AD94]/70 disabled:cursor-not-allowed disabled:bg-pink-500/40 h-[30px]"
               onClick={handleGlaze}
               disabled={isGlazeDisabled}
             >
