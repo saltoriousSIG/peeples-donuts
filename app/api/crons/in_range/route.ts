@@ -9,8 +9,7 @@ import {
   MULTICALL_ABI,
   ERC20,
 } from "@/lib/contracts";
-import { STRATEGY_MINUTES_BREAKEVEN } from "@/lib/utils";
-import { Strategy } from "@/types/pool.type";
+import { getBreakevenThreshold } from "@/lib/utils";
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL as string,
@@ -30,7 +29,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (hasAlreadyBeenNotified === "true" || hasAlreadyBeenNotified) {
-      if(minerState.miner !== CONTRACT_ADDRESSES.pool) {
+      if (minerState.miner !== CONTRACT_ADDRESSES.pool) {
         await redis.del("notification_sent");
         return NextResponse.json({
           success: true,
@@ -38,7 +37,6 @@ export async function GET(req: NextRequest) {
         });
       }
     }
-
 
     if (hasAlreadyBeenNotified === "false" || !hasAlreadyBeenNotified) {
       const poolConfig = await publicClient.readContract({
@@ -63,7 +61,11 @@ export async function GET(req: NextRequest) {
       const dps = parseFloat(formatUnits(minerState?.dps ?? 0n, 18));
       const strategy = poolConfig.strategy;
       const breakEvenSeconds = glazePrice / (donutPrice * dps);
-      const targetBreakEven = STRATEGY_MINUTES_BREAKEVEN[strategy as Strategy];
+      const targetBreakEven = getBreakevenThreshold(
+        glazePrice,
+        poolWeth,
+        strategy
+      );
 
       const canBuy =
         targetBreakEven >= breakEvenSeconds / 60 && poolWeth >= glazePrice;
