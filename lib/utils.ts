@@ -53,7 +53,7 @@ export async function getEthPrice(): Promise<number> {
 export const STRATEGY_MINUTES_BREAKEVEN:Record<Strategy, number> = {
   [Strategy.CONSERVATIVE]: 30,
   [Strategy.MODERATE]: 60,
-  [Strategy.AGGRESSIVE]: 163,
+  [Strategy.AGGRESSIVE]: 165,
   [Strategy.DEGEN]: 200,
 }
 
