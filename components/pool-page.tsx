@@ -29,11 +29,13 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
   const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [shareAction, setShareAction] = useState<ShareAction>();
-  const [shareDetails, setShareActionDetails] = useState<{ embed: string; message: string }>({
+  const [shareDetails, setShareActionDetails] = useState<{
+    embed: string;
+    message: string;
+  }>({
     message: "",
-    embed: ""
+    embed: "",
   });
-
 
   const { address } = useAccount();
 
@@ -137,10 +139,10 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
 
   const handleShareDeposit = () => {
     sdk.actions.composeCast({
-      text: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`, 
+      text: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`,
       embeds: ["https://peeplesdonuts.com/pool"],
-    })
-  }
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#FFFDD0] coming-soon">
@@ -216,7 +218,11 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
 
               <div>
                 <div className="text-base text-gray-800/80 uppercase tracking-[0.1em] font-semibold whitespace-nowrap">
-                  Total: ${(parseFloat(wethUsdValue.replace(/,/g, "")) + parseFloat(donutUsdValue.replace(/,/g, ""))).toLocaleString("en-US", {
+                  Total: $
+                  {(
+                    parseFloat(wethUsdValue.replace(/,/g, "")) +
+                    parseFloat(donutUsdValue.replace(/,/g, ""))
+                  ).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -255,17 +261,6 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
               : 0
           }
         />
-
-        <BuyKingGlazer onBuy={() => {
-          setShareAction("king-glazer")
-          setShareActionDetails({
-            message: `I just bought King Glazer for the Peeples Pool, and earned 25K $PEEPLES 🍩👑 Let's get glazed together`,
-            embed: "https://peeplesdonuts.com/pool"
-          });
-          setShareModalOpen(true);
-        }} />
-
-        <PoolVoting />
 
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-[#3D405B]/10 p-7 shadow-sm hover:shadow-md transition-all duration-300">
           {/* Mode Toggle */}
@@ -406,11 +401,13 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
             <Button
               onClick={async () => {
                 if (mode === "deposit") {
-                  await deposit(parseInt(parseUnits(amount || "0", 18).toString()));
-                  setShareAction("deposit")
+                  await deposit(
+                    parseInt(parseUnits(amount || "0", 18).toString())
+                  );
+                  setShareAction("deposit");
                   setShareActionDetails({
                     message: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`,
-                    embed: "https://peeplesdonuts.com/pool"
+                    embed: "https://peeplesdonuts.com/pool",
                   });
                   setShareModalOpen(true);
                 } else if (mode === "withdraw") {
@@ -427,6 +424,19 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
             </Button>
           </div>
         </div>
+
+        <BuyKingGlazer
+          onBuy={() => {
+            setShareAction("king-glazer");
+            setShareActionDetails({
+              message: `I just bought King Glazer for the Peeples Pool, and earned 25K $PEEPLES 🍩👑 Let's get glazed together`,
+              embed: "https://peeplesdonuts.com/pool",
+            });
+            setShareModalOpen(true);
+          }}
+        />
+
+        <PoolVoting />
 
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-[#3D405B]/10 p-7 shadow-sm hover:shadow-md transition-all duration-300">
           <h3 className="text-lg font-bold text-[#3D405B] mb-6 tracking-tight">
@@ -491,15 +501,16 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
         </div>
       </div>
       <NavBar />
-      <ShareModal 
-        isOpen={shareModalOpen} 
+      <ShareModal
+        isOpen={shareModalOpen}
         onClose={() => {
-          setShareModalOpen(false)
+          setShareModalOpen(false);
           setShareAction(undefined);
           setShareActionDetails({ embed: "", message: "" });
-        }}  
-        action={shareAction as ShareAction} 
-        details={shareDetails} />
+        }}
+        action={shareAction as ShareAction}
+        details={shareDetails}
+      />
     </div>
   );
 };
