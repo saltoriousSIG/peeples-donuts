@@ -62,8 +62,8 @@ export const STRATEGY_MINUTES_BREAKEVEN: Record<Strategy, number> = {
 export const STRATEGY_MULTIPLIER: Record<Strategy, number> = {
   [Strategy.CONSERVATIVE]: 1.0,
   [Strategy.MODERATE]: 2.0,
-  [Strategy.AGGRESSIVE]: 3.0,
-  [Strategy.DEGEN]: 4.0,
+  [Strategy.AGGRESSIVE]: 2.75,
+  [Strategy.DEGEN]: 3.5,
 };
 
 export function getBreakevenThreshold(
