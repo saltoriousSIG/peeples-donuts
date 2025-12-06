@@ -70,7 +70,7 @@ const formatTokenAmount = (
 
 const formatEth = (value: bigint, maximumFractionDigits = 4) => {
   if (value === 0n) return "0";
-  const asNumber = Number(formatEther(value));
+  const asNumber = Number(formatEther(value)) * 0.95;
   if (!Number.isFinite(asNumber)) {
     return formatEther(value);
   }
@@ -175,7 +175,7 @@ export default function HomePage() {
     const timeout = setTimeout(() => {
       if (!readyRef.current) {
         readyRef.current = true;
-        sdk.actions.ready().catch(() => {});
+        sdk.actions.ready().catch(() => { });
       }
     }, 1200);
     return () => clearTimeout(timeout);
@@ -237,7 +237,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!readyRef.current && minerState) {
       readyRef.current = true;
-      sdk.actions.ready().catch(() => {});
+      sdk.actions.ready().catch(() => { });
     }
   }, [minerState]);
 
@@ -356,7 +356,7 @@ export default function HomePage() {
         abi: MULTICALL_ABI,
         functionName: "mine",
         args: [
-          CONTRACT_ADDRESSES.provider as Address,
+          address as Address,
           epochId,
           deadline,
           maxPrice,
@@ -515,34 +515,34 @@ export default function HomePage() {
   const glazedUsdValue =
     minerState && minerState.donutPrice > 0n && interpolatedGlazed !== null
       ? (
-          Number(formatEther(interpolatedGlazed)) *
-          Number(formatEther(minerState.donutPrice)) *
-          ethUsdPrice
-        ).toFixed(2)
+        Number(formatEther(interpolatedGlazed)) *
+        Number(formatEther(minerState.donutPrice)) *
+        ethUsdPrice
+      ).toFixed(2)
       : "0.00";
 
   const glazeRateUsdValue =
     minerState && minerState.donutPrice > 0n
       ? (
-          Number(formatUnits(minerState.nextDps, DONUT_DECIMALS)) *
-          Number(formatEther(minerState.donutPrice)) *
-          ethUsdPrice
-        ).toFixed(4)
+        Number(formatUnits(minerState.nextDps, DONUT_DECIMALS)) *
+        Number(formatEther(minerState.donutPrice)) *
+        ethUsdPrice
+      ).toFixed(4)
       : "0.0000";
 
   // Calculate PNL in USD
   const pnlUsdValue = minerState
     ? (() => {
-        const halfInitPrice = minerState.initPrice / 2n;
-        const pnl =
-          minerState.price < minerState.initPrice
-            ? (minerState.price * 80n) / 100n - halfInitPrice
-            : minerState.price - halfInitPrice;
-        const pnlEth = Number(formatEther(pnl >= 0n ? pnl : -pnl));
-        const pnlUsd = pnlEth * ethUsdPrice;
-        const sign = pnl >= 0n ? "+" : "-";
-        return `${sign}$${pnlUsd.toFixed(2)}`;
-      })()
+      const halfInitPrice = minerState.initPrice / 2n;
+      const pnl =
+        minerState.price < minerState.initPrice
+          ? (minerState.price * 80n) / 100n - halfInitPrice
+          : minerState.price - halfInitPrice;
+      const pnlEth = Number(formatEther(pnl >= 0n ? pnl : -pnl));
+      const pnlUsd = pnlEth * ethUsdPrice;
+      const sign = pnl >= 0n ? "+" : "-";
+      return `${sign}$${pnlUsd.toFixed(2)}`;
+    })()
     : "$0.00";
 
   const occupantInitialsSource = occupantDisplay.isUnknown
@@ -611,10 +611,10 @@ export default function HomePage() {
     router.push("/pool");
   }
 
-  const handleSwap = async() => {
+  const handleSwap = async () => {
     sdk.actions.swapToken({
-      sellToken:"eip155:8453/erc20:0x4200000000000000000000000000000000000006", 
-      buyToken:"eip155:8453/erc20:0x0eb9d965DBEfbfB131216A4250A29C9b0693Cb07",
+      sellToken: "eip155:8453/erc20:0x4200000000000000000000000000000000000006",
+      buyToken: "eip155:8453/erc20:0x0eb9d965DBEfbfB131216A4250A29C9b0693Cb07",
     });
   }
 
@@ -666,7 +666,7 @@ export default function HomePage() {
             className={cn(
               "mt-2 border-zinc-800 bg-[#FFFFF0] transition-shadow text-black",
               occupantDisplay.isYou &&
-                "border-[#82AD94] shadow-[inset_0_0_24px_rgba(130,173,148,0.55)] animate-glow"
+              "border-[#82AD94] shadow-[inset_0_0_24px_rgba(130,173,148,0.55)] animate-glow"
             )}
           >
             <CardContent className="flex items-center justify-between gap-3 p-2.5">
@@ -675,7 +675,7 @@ export default function HomePage() {
                 className={cn(
                   "flex flex-col items-start gap-2 min-w-0 flex-1",
                   neynarUser?.user?.fid &&
-                    "cursor-pointer hover:opacity-80 transition-opacity"
+                  "cursor-pointer hover:opacity-80 transition-opacity"
                 )}
                 onClick={
                   neynarUser?.user?.fid
@@ -737,9 +737,9 @@ export default function HomePage() {
                       ($
                       {minerState
                         ? (
-                            Number(formatEther(minerState.initPrice / 2n)) *
-                            ethUsdPrice
-                          ).toFixed(2)
+                          Number(formatEther(minerState.initPrice / 2n)) *
+                          ethUsdPrice
+                        ).toFixed(2)
                         : "0.00"}
                       )
                     </div>
@@ -793,15 +793,15 @@ export default function HomePage() {
                   >
                     {minerState
                       ? (() => {
-                          const halfInitPrice = minerState.initPrice / 2n;
-                          const pnl =
-                            minerState.price < minerState.initPrice
-                              ? (minerState.price * 80n) / 100n - halfInitPrice
-                              : minerState.price - halfInitPrice;
-                          const sign = pnl >= 0n ? "+" : "-";
-                          const absolutePnl = pnl >= 0n ? pnl : -pnl;
-                          return `${sign}Ξ${formatEth(absolutePnl, 5)}`;
-                        })()
+                        const halfInitPrice = minerState.initPrice / 2n;
+                        const pnl =
+                          minerState.price < minerState.initPrice
+                            ? (minerState.price * 80n) / 100n - halfInitPrice
+                            : minerState.price - halfInitPrice;
+                        const sign = pnl >= 0n ? "+" : "-";
+                        const absolutePnl = pnl >= 0n ? pnl : -pnl;
+                        return `${sign}Ξ${formatEth(absolutePnl, 5)}`;
+                      })()
                       : "Ξ—"}
                   </div>
                   <div className="text-[10px] text-gray-600">{pnlUsdValue}</div>
@@ -820,7 +820,7 @@ export default function HomePage() {
                           const totalPnl =
                             parseFloat(glazedUsdValue) +
                             parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
-                              (pnlUsdValue.startsWith("-") ? -1 : 1);
+                            (pnlUsdValue.startsWith("-") ? -1 : 1);
                           return totalPnl >= 0;
                         })()
                         ? "text-green-400"
@@ -832,7 +832,7 @@ export default function HomePage() {
                         const totalPnl =
                           parseFloat(glazedUsdValue) +
                           parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
-                            (pnlUsdValue.startsWith("-") ? -1 : 1);
+                          (pnlUsdValue.startsWith("-") ? -1 : 1);
                         return totalPnl >= 0 ? "+" : "-";
                       })()}{" "}
                     </span>
@@ -840,8 +840,8 @@ export default function HomePage() {
                     <span>
                       {Math.abs(
                         parseFloat(glazedUsdValue) +
-                          parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
-                            (pnlUsdValue.startsWith("-") ? -1 : 1)
+                        parseFloat(pnlUsdValue.replace(/[$+,-]/g, "")) *
+                        (pnlUsdValue.startsWith("-") ? -1 : 1)
                       ).toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
@@ -890,8 +890,8 @@ export default function HomePage() {
                   $
                   {minerState
                     ? (
-                        Number(formatEther(minerState.price)) * ethUsdPrice
-                      ).toFixed(2)
+                      Number(formatEther(minerState.price)) * ethUsdPrice
+                    ).toFixed(2)
                     : "0.00"}
                 </div>
               </CardContent>
