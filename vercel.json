@@ -4,9 +4,5 @@
       "path": "/api/crons/finalize",
       "schedule": "* * * * *"
     },
-    {
-      "path": "/api/crons/in_range",
-      "schedule": "* * * * *"
-    }
   ]
 }
