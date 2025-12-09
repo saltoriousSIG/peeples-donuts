@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -6,10 +7,10 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  try {
+ try {
     return NextResponse.json({
       success: true,
-      message: "pong",
+      message: "notification sent",
     });
   } catch (e: any) {
     return NextResponse.json(
