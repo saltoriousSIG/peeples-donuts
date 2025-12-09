@@ -50,11 +50,32 @@ export async function getEthPrice(): Promise<number> {
   }
 }
 
-export const STRATEGY_MINUTES_BREAKEVEN:Record<Strategy, number> = {
+export const DECAY_WINDOW = 60;
+
+export const STRATEGY_MINUTES_BREAKEVEN: Record<Strategy, number> = {
   [Strategy.CONSERVATIVE]: 30,
   [Strategy.MODERATE]: 60,
   [Strategy.AGGRESSIVE]: 165,
   [Strategy.DEGEN]: 200,
+};
+
+export const STRATEGY_MULTIPLIER: Record<Strategy, number> = {
+  [Strategy.CONSERVATIVE]: 1.0,
+  [Strategy.MODERATE]: 2.0,
+  [Strategy.AGGRESSIVE]: 2.5,
+  [Strategy.DEGEN]: 4,
+};
+
+export function getBreakevenThreshold(
+  glazePriceETH: number,
+  poolBalanceETH: number,
+  strategy: Strategy
+): number {
+  const capitalRatio = poolBalanceETH / glazePriceETH;
+  return Math.floor(
+    DECAY_WINDOW * capitalRatio * STRATEGY_MULTIPLIER[strategy]
+  );
 }
 
-export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
