@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
 export async function POST(req: NextRequest) {
+  console.log(process.env.CRON_SECRET);
   if (
     req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
   ) {
