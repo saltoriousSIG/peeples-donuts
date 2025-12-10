@@ -51,6 +51,7 @@ export async function getEthPrice(): Promise<number> {
 }
 
 export const DECAY_WINDOW = 60;
+export const MAX_CAPITAL_RATIO = 1.1;
 
 export const STRATEGY_MINUTES_BREAKEVEN: Record<Strategy, number> = {
   [Strategy.CONSERVATIVE]: 30,
@@ -72,8 +73,11 @@ export function getBreakevenThreshold(
   strategy: Strategy
 ): number {
   const capitalRatio = poolBalanceETH / glazePriceETH;
+  const effectiveRatio =
+    (MAX_CAPITAL_RATIO * capitalRatio) / (capitalRatio + 1);
+
   return Math.floor(
-    DECAY_WINDOW * capitalRatio * STRATEGY_MULTIPLIER[strategy]
+    DECAY_WINDOW * effectiveRatio * STRATEGY_MULTIPLIER[strategy]
   );
 }
 
