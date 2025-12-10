@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
 import axios from "axios";
 
 export async function POST(req: NextRequest) {
   console.log(process.env.CRON_SECRET);
-  console.log(req.headers.get("authorization"));
+  const headersList = await headers();
+  console.log(headersList.get("authorization"));
   if (
-    req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
+    headersList.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
