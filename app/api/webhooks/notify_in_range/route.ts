@@ -3,6 +3,7 @@ import axios from "axios";
 
 export async function POST(req: NextRequest) {
   console.log(process.env.CRON_SECRET);
+  console.log(req.headers.get("authorization"));
   if (
     req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
   ) {
