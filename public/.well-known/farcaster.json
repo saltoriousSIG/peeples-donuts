@@ -3,7 +3,7 @@
     "header": "eyJmaWQiOjQ4MzcxMywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQ2M0IxRThFNzhCMjgwMjdiNDIzRWE2ZjAwNjk1ZjAxYTg0RUZlNzIifQ",
     "payload": "eyJkb21haW4iOiJtaW5pYXBwLnBlZXBsZXNkb251dHMuY29tIn0",
     "signature": "JH+soq4aoJGMV/10g546PRn3ro4mNDKJVBFICI76pu8EjHG7fMDEXutrkBdQlaAuwmUz76bW1MGdxWVkk2Usshs="
-  }
+  },
   "miniapp": {
     "version": "1",
     "name": "Peeples Donuts",
