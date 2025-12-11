@@ -151,6 +151,7 @@ export default function HomePage() {
           }
         ).context) as MiniAppContext;
         if (!cancelled) {
+          console.log(ctx);
           setContext(ctx);
         }
       } catch {
