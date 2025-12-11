@@ -153,7 +153,7 @@ export default function HomePage() {
         if (!cancelled) {
           console.log(ctx);
           if (!ctx) {
-            window.open("https://peeplesdonuts.shop")
+            window.location.replace("https://peeplesdonuts.shop")
           }
           setContext(ctx);
         }
