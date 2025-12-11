@@ -237,7 +237,9 @@ export default function HomePage() {
   useEffect(() => {
     if (!readyRef.current && minerState) {
       readyRef.current = true;
-      sdk.actions.ready().catch(() => { });
+      sdk.actions.ready().catch((e) => {
+        console.error("Failed to signal ready to Farcaster SDK:", e);
+      });
     }
   }, [minerState]);
 
