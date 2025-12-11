@@ -175,7 +175,10 @@ export default function HomePage() {
     const timeout = setTimeout(() => {
       if (!readyRef.current) {
         readyRef.current = true;
-        sdk.actions.ready().catch(() => { });
+        sdk.actions.ready().catch(() => {
+          console.log("Failed to signal ready to Farcaster SDK");
+
+        });
       }
     }, 1200);
     return () => clearTimeout(timeout);
