@@ -1,24 +1,24 @@
 {
   "accountAssociation": {
     "header": "eyJmaWQiOjQ4MzcxMywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDQ2M0IxRThFNzhCMjgwMjdiNDIzRWE2ZjAwNjk1ZjAxYTg0RUZlNzIifQ",
-    "payload": "eyJkb21haW4iOiJtaW5pYXBwLnBlZXBsZXNkb251dHMuY29tIn0",
-    "signature": "JH+soq4aoJGMV/10g546PRn3ro4mNDKJVBFICI76pu8EjHG7fMDEXutrkBdQlaAuwmUz76bW1MGdxWVkk2Usshs="
+    "payload": "eyJkb21haW4iOiJwZWVwbGVzZG9udXRzLmNvbSJ9",
+    "signature": "x8FKAH0BRUONpX6bPpA6kNzx7EpwDt/wkszCjCb55dR7M4HrN1K756yj8a9v2eehj+rL8gTPlQDth50K0o4yihw="
   },
   "miniapp": {
     "version": "1",
     "name": "Peeples Donuts",
     "tagline": "Join the family business",
     "description": "Join the Peeples family business and help dominate the donut mines!",
-    "iconUrl": "https://miniapp.peeplesdonuts.com/media/peeples_donuts.png",
-    "homeUrl": "https://miniapp.peeplesdonuts.com",
+    "iconUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
+    "homeUrl": "https://peeplesdonuts.com",
     "webhookUrl": "https://api.neynar.com/f/app/c98c22dc-edc4-4f71-93c0-69119b2b9cd2/event",
-    "splashImageUrl": "https://minapp.peeplesdonuts.com/media/peeples_donuts.png",
+    "splashImageUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
     "splashBackgroundColor": "#FFFDD0",
-    "heroImageUrl": "https://miniapp.peeplesdonuts.com/media/peeples_donuts.png",
+    "heroImageUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
     "buttonTitle": "Peeples Donuts",
     "ogTitle": "Join the family business",
     "ogDescription": "Join the Peeples family business and help dominate the donut mines!",
-    "ogImageUrl": "https://miniapp.peeplesdonuts.com/media/peeples_donuts.png",
+    "ogImageUrl": "https://peeplesdonuts.com/media/peeples_donuts.png",
     "requiredChains": ["eip155:8453"],
     "primaryCategory": "finance",
     "tags": ["gaming", "base", "rewards"],
