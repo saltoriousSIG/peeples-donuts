@@ -154,6 +154,7 @@ export default function HomePage() {
           setContext(ctx);
         }
       } catch {
+        console.log("Failed to load miniapp context");
         if (!cancelled) setContext(null);
       }
     };
