@@ -152,6 +152,9 @@ export default function HomePage() {
         ).context) as MiniAppContext;
         if (!cancelled) {
           console.log(ctx);
+          if (!ctx) {
+            window.open("https://peeplesdonuts.shop")
+          }
           setContext(ctx);
         }
       } catch {
