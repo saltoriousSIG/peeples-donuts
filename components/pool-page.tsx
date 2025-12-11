@@ -140,7 +140,7 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
   const handleShareDeposit = () => {
     sdk.actions.composeCast({
       text: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`,
-      embeds: ["https://peeplesdonuts.com/pool"],
+      embeds: ["https://miniapp.peeplesdonuts.com/pool"],
     });
   };
 
@@ -407,7 +407,7 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
                   setShareAction("deposit");
                   setShareActionDetails({
                     message: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`,
-                    embed: "https://peeplesdonuts.com/pool",
+                    embed: "https://miniapp.peeplesdonuts.com/pool",
                   });
                   setShareModalOpen(true);
                 } else if (mode === "withdraw") {
@@ -430,7 +430,7 @@ const PoolsPage: React.FC<PoolsPageProps> = () => {
             setShareAction("king-glazer");
             setShareActionDetails({
               message: `I just bought King Glazer for the Peeples Pool, and earned 25K $PEEPLES 🍩👑 Let's get glazed together`,
-              embed: "https://peeplesdonuts.com/pool",
+              embed: "https://miniapp.peeplesdonuts.com/pool",
             });
             setShareModalOpen(true);
           }}
