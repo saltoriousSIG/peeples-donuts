@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         notification: {
           title: `The pool is in buy range!`,
           body: "Buy King Glazer on behalf of the pool, and earn 25K $PEEPLES",
-          target_url: "https://peeplesdonuts.com/pool",
+          target_url: "https://peeplesdonuts.com",
         },
         target_fids: [...fids],
       },
