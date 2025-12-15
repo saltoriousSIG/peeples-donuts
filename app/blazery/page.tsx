@@ -6,16 +6,21 @@ import {
   useAccount,
   useConnect,
   useReadContract,
+  useReadContracts,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
 import { base } from "wagmi/chains";
-import { formatEther, zeroAddress, type Address } from "viem";
+import { formatEther, zeroAddress, type Address, formatUnits } from "viem";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CONTRACT_ADDRESSES, MULTICALL_ABI } from "@/lib/contracts";
+import {
+  CONTRACT_ADDRESSES,
+  MULTICALL_ABI,
+  PEEPLES_BLAZERY,
+} from "@/lib/contracts";
 import { cn, getEthPrice } from "@/lib/utils";
 import { NavBar } from "@/components/nav-bar";
 
@@ -44,6 +49,9 @@ const DEADLINE_BUFFER_SECONDS = 5 * 60;
 const LP_TOKEN_ADDRESS =
   "0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703" as Address;
 
+const PEEPLES_DONUT_LP_TOKEN_ADDRESS =
+  "0x189f254685CD46E48CbdCe39E9572695dDe92402" as Address;
+
 const toBigInt = (value: bigint | number) =>
   typeof value === "bigint" ? value : BigInt(value);
 
@@ -66,6 +74,7 @@ const initialsFrom = (label?: string) => {
 };
 
 export default function BlazeryPage() {
+  // Mock data
   const readyRef = useRef(false);
   const autoConnectAttempted = useRef(false);
   const [context, setContext] = useState<MiniAppContext | null>(null);
@@ -187,6 +196,36 @@ export default function BlazeryPage() {
     return rawAuctionState as unknown as AuctionState;
   }, [rawAuctionState]);
 
+  const { data } = useReadContracts({
+    contracts: [
+      {
+        address: CONTRACT_ADDRESSES.peeples_blazery,
+        abi: PEEPLES_BLAZERY,
+        functionName: "getSlot0",
+        args: [],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.peeples_blazery,
+        abi: PEEPLES_BLAZERY,
+        functionName: "paymentToken",
+        args: [],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.peeples_blazery,
+        abi: PEEPLES_BLAZERY,
+        functionName: "getPrice",
+        args: [],
+        chainId: base.id,
+      },
+    ],
+    query: {
+      refetchInterval: 3_000,
+    },
+  });
+  console.log("blazery data", data);
+
   const ERC20_ABI = [
     {
       inputs: [
@@ -249,7 +288,7 @@ export default function BlazeryPage() {
       // If we're in idle or approval failed, start with approval
       if (txStep === "idle") {
         setTxStep("approving");
-        await writeContract({
+        writeContract({
           account: targetAddress as Address,
           address: LP_TOKEN_ADDRESS,
           abi: ERC20_ABI,
@@ -262,7 +301,7 @@ export default function BlazeryPage() {
 
       // If approval succeeded, now call buy
       if (txStep === "buying") {
-        await writeContract({
+        writeContract({
           account: targetAddress as Address,
           address: CONTRACT_ADDRESSES.multicall as Address,
           abi: MULTICALL_ABI,
@@ -395,18 +434,21 @@ export default function BlazeryPage() {
   const userAvatarUrl = context?.user?.pfpUrl ?? null;
 
   return (
-    <main className="flex h-screen w-screen justify-center overflow-hidden bg-[#FFFDD0] coming-soon text-white">
+    <main className="flex h-screen w-screen justify-center bg-[#FFFDD0] coming-soon text-white">
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden rounded-[28px] bg-[#FFFDD0] px-2 pb-4 shadow-inner"
+        className="relative flex h-full w-full flex-1 flex-col rounded-[28px] bg-[#FFFDD0] px-2 pb-4 shadow-inner"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
         }}
       >
-        <div className="flex flex-1 flex-col overflow-hidden text-black">
+        <div className="flex flex-1 flex-col text-black">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold tracking-wide amatic flex items-center justify-center">
-            <img src="/media/peeples_donuts.png" className="h-[50px] w-[50px]" />
+              <img
+                src="/media/peeples_donuts.png"
+                className="h-[50px] w-[50px]"
+              />
               PEEPLES DONUTS
             </h1>
             {context?.user ? (
@@ -430,107 +472,157 @@ export default function BlazeryPage() {
               </div>
             ) : null}
           </div>
+          <div className="mt-1 flex flex-col">
+            <h2 className="uppercase font-bold">Donut-ETH Blazery:</h2>
+            <div className="mt-1 grid grid-cols-2 gap-2 h-fit">
+              <Card className="border-[#82AF96] bg-[#FFFFF0]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    PAY
+                  </div>
+                  <div className="text-2xl font-semibold text-[#82AF96]">
+                    {auctionPriceDisplay} LP
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {auctionState
+                      ? (
+                          Number(formatEther(auctionState.price)) *
+                          Number(formatEther(auctionState.paymentTokenPrice)) *
+                          ethUsdPrice
+                        ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Card className="border-[#82AF96] bg-[#FFFFF0]">
-              <CardContent className="grid gap-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
-                  PAY
-                </div>
-                <div className="text-2xl font-semibold text-[#82AF96]">
-                  {auctionPriceDisplay} LP
-                </div>
-                <div className="text-xs text-gray-600">
-                  $
-                  {auctionState
-                    ? (
-                        Number(formatEther(auctionState.price)) *
-                        Number(formatEther(auctionState.paymentTokenPrice)) *
-                        ethUsdPrice
-                      ).toFixed(2)
-                    : "0.00"}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
-              <CardContent className="grid gap-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
-                  GET
-                </div>
-                <div className="text-2xl font-semibold">
-                  Ξ{claimableDisplay}
-                </div>
-                <div className="text-xs text-gray-600">
-                  $
-                  {auctionState
-                    ? (
-                        Number(formatEther(auctionState.wethAccumulated)) *
-                        ethUsdPrice
-                      ).toFixed(2)
-                    : "0.00"}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2">
-            <Button
-              className="w-full rounded-2xl bg-[#82AF96] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AF96]/90 disabled:cursor-not-allowed disabled:bg-[#82AF96]/80"
-              onClick={handleBlaze}
-              disabled={isBlazeDisabled}
-            >
-              {buttonLabel}
-            </Button>
-
-            <div className="flex items-center justify-between px-1">
-              <div className="text-xs text-black">
-                Available:{" "}
-                <span className="text-black font-semibold">
-                  {address && auctionState?.paymentTokenBalance
-                    ? formatEth(auctionState.paymentTokenBalance, 4)
-                    : "0"}
-                </span>{" "}
-                DONUT-ETH LP
-              </div>
-              <a
-                href="https://app.uniswap.org/explore/pools/base/0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#82AF96] hover:text-[#82AF96]/80 font-semibold transition-colors"
-              >
-                Get LP →
-              </a>
+              <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    GET
+                  </div>
+                  <div className="text-2xl font-semibold">
+                    Ξ{claimableDisplay}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {auctionState
+                      ? (
+                          Number(formatEther(auctionState.wethAccumulated)) *
+                          ethUsdPrice
+                        ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Profit/Loss Warning Message */}
-            {blazeProfitLoss && (
-              <div
-                className={cn(
-                  "text-center text-sm font-semibold px-2 py-1.5 rounded",
-                  blazeProfitLoss.isProfitable
-                    ? "text-green-400"
-                    : "text-red-400"
-                )}
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                className="w-full rounded-2xl bg-[#82AF96] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AF96]/90 disabled:cursor-not-allowed disabled:bg-[#82AF96]/80"
+                onClick={handleBlaze}
+                disabled={isBlazeDisabled}
               >
-                {blazeProfitLoss.isProfitable ? (
-                  <>
-                    💰 Profitable blaze! You'll receive $
-                    {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
-                    {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP (
-                    {blazeProfitLoss.profitLoss >= 0 ? "+" : ""}$
-                    {blazeProfitLoss.profitLoss.toFixed(2)})
-                  </>
-                ) : (
-                  <>
-                    ⚠️ Unprofitable blaze! You'll receive $
-                    {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
-                    {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP ($
-                    {blazeProfitLoss.profitLoss.toFixed(2)})
-                  </>
-                )}
+                {buttonLabel}
+              </Button>
+
+              <div className="flex items-center justify-between px-1">
+                <div className="text-xs text-black">
+                  Available:{" "}
+                  <span className="text-black font-semibold">
+                    {address && auctionState?.paymentTokenBalance
+                      ? formatEth(auctionState.paymentTokenBalance, 4)
+                      : "0"}
+                  </span>{" "}
+                  DONUT-ETH LP
+                </div>
+                <a
+                  href="https://app.uniswap.org/explore/pools/base/0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#82AF96] hover:text-[#82AF96]/80 font-semibold transition-colors"
+                >
+                  Get LP →
+                </a>
               </div>
-            )}
+
+              {/* Profit/Loss Warning Message */}
+              {blazeProfitLoss && (
+                <div
+                  className={cn(
+                    "text-center text-sm font-semibold px-2 py-1.5 rounded",
+                    blazeProfitLoss.isProfitable
+                      ? "text-green-400"
+                      : "text-red-400"
+                  )}
+                >
+                  {blazeProfitLoss.isProfitable ? (
+                    <>
+                      💰 Profitable blaze! You'll receive $
+                      {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
+                      {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP (
+                      {blazeProfitLoss.profitLoss >= 0 ? "+" : ""}$
+                      {blazeProfitLoss.profitLoss.toFixed(2)})
+                    </>
+                  ) : (
+                    <>
+                      ⚠️ Unprofitable blaze! You'll receive $
+                      {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
+                      {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP ($
+                      {blazeProfitLoss.profitLoss.toFixed(2)})
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-2">
+            <h2 className="uppercase font-bold">Donut-PEEPLES Blazery:</h2>
+            <div className="mt-1 grid grid-cols-2 gap-2 h-fit">
+              <Card className="border-[#82AF96] bg-[#FFFFF0]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    PAY
+                  </div>
+                  <div className="text-2xl font-semibold text-[#82AF96]">
+                    {parseFloat(
+                      formatUnits( 0n, 18)
+                    ).toFixed(4)}{" "}
+                    LP
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {auctionState
+                      ? (
+                          Number(formatEther(auctionState.price)) *
+                          Number(formatEther(auctionState.paymentTokenPrice)) *
+                          ethUsdPrice
+                        ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    GET
+                  </div>
+                  <div className="text-2xl font-semibold">
+                    Ξ{claimableDisplay}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {auctionState
+                      ? (
+                          Number(formatEther(auctionState.wethAccumulated)) *
+                          ethUsdPrice
+                        ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
