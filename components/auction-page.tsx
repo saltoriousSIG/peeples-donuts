@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { sdk } from "@farcaster/miniapp-sdk";
 import { NavBar } from "@/components/nav-bar"
 import { usePool } from "@/providers/PoolProvider"
 import { useQuery } from "@tanstack/react-query"
@@ -10,6 +11,7 @@ import axios from "axios";
 import { CONTRACT_ADDRESSES, ERC20 } from "@/lib/contracts"
 import { useReadContract, useAccount } from "wagmi"
 import { base } from "wagmi/chains";
+import { MiniAppContext } from "../app/page";
 import { toast } from "sonner"
 import { Countdown } from "./countdown"
 
@@ -25,6 +27,28 @@ export default function AuctionPage() {
     const isAuctionActive = useMemo(() => {
         return currentAuction && currentAuction.highestBidder !== "0x0000000000000000000000000000000000000000"
     }, [currentAuction]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const hydrateContext = async () => {
+            try {
+                const ctx = (await (
+                    sdk as unknown as {
+                        context: Promise<MiniAppContext> | MiniAppContext;
+                    }
+                ).context) as MiniAppContext;
+                if (!cancelled) {
+                    setContext(ctx);
+                }
+            } catch {
+                if (!cancelled) setContext(null);
+            }
+        };
+        hydrateContext();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
 
     const { data: currentFeeRecipient } = useQuery({
