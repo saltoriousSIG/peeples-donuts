@@ -2,22 +2,31 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
+import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import {
   useAccount,
   useConnect,
   useReadContract,
+  useReadContracts,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
 import { base } from "wagmi/chains";
-import { formatEther, zeroAddress, type Address } from "viem";
-
+import { formatEther, zeroAddress, type Address, formatUnits } from "viem";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CONTRACT_ADDRESSES, MULTICALL_ABI } from "@/lib/contracts";
+import {
+  CONTRACT_ADDRESSES,
+  MULTICALL_ABI,
+  PEEPLES_BLAZERY,
+  ERC20
+} from "@/lib/contracts";
+
 import { cn, getEthPrice } from "@/lib/utils";
 import { NavBar } from "@/components/nav-bar";
+import { format } from "path";
 
 type MiniAppContext = {
   user?: {
@@ -44,6 +53,9 @@ const DEADLINE_BUFFER_SECONDS = 5 * 60;
 const LP_TOKEN_ADDRESS =
   "0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703" as Address;
 
+const PEEPLES_DONUT_LP_TOKEN_ADDRESS =
+  "0x189f254685CD46E48CbdCe39E9572695dDe92402" as Address;
+
 const toBigInt = (value: bigint | number) =>
   typeof value === "bigint" ? value : BigInt(value);
 
@@ -66,6 +78,7 @@ const initialsFrom = (label?: string) => {
 };
 
 export default function BlazeryPage() {
+  // Mock data
   const readyRef = useRef(false);
   const autoConnectAttempted = useRef(false);
   const [context, setContext] = useState<MiniAppContext | null>(null);
@@ -144,7 +157,7 @@ export default function BlazeryPage() {
     const timeout = setTimeout(() => {
       if (!readyRef.current) {
         readyRef.current = true;
-        sdk.actions.ready().catch(() => {});
+        sdk.actions.ready().catch(() => { });
       }
     }, 1200);
     return () => clearTimeout(timeout);
@@ -167,7 +180,7 @@ export default function BlazeryPage() {
     connectAsync({
       connector: primaryConnector,
       chainId: base.id,
-    }).catch(() => {});
+    }).catch(() => { });
   }, [connectAsync, isConnected, isConnecting, primaryConnector]);
 
   const { data: rawAuctionState, refetch: refetchAuctionState } =
@@ -187,6 +200,121 @@ export default function BlazeryPage() {
     return rawAuctionState as unknown as AuctionState;
   }, [rawAuctionState]);
 
+  const { data: peeplesTokenPrice } = useQuery({
+    queryKey: ['peeplesTokenPrice'],
+    queryFn: async () => {
+      const { data } = await axios.get('/api/clanker/token_info');
+      console.log(data.peeples_price);
+      return data.peeples_price;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+
+  const { data } = useReadContracts({
+    contracts: [
+      {
+        address: CONTRACT_ADDRESSES.multicall,
+        abi: MULTICALL_ABI,
+        functionName: "getMiner",
+        args: [address ?? zeroAddress],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.peeples_blazery,
+        abi: PEEPLES_BLAZERY,
+        functionName: "getSlot0",
+        args: [],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.peeples_blazery,
+        abi: PEEPLES_BLAZERY,
+        functionName: "paymentToken",
+        args: [],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.peeples_blazery,
+        abi: PEEPLES_BLAZERY,
+        functionName: "getPrice",
+        args: [],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.donut,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [PEEPLES_DONUT_LP_TOKEN_ADDRESS],
+        chainId: base.id
+      },
+      {
+        address: PEEPLES_DONUT_LP_TOKEN_ADDRESS,
+        abi: ERC20,
+        functionName: "totalSupply",
+        args: [],
+        chainId: base.id
+      },
+      {
+        address: CONTRACT_ADDRESSES.donut,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [CONTRACT_ADDRESSES.peeples_blazery],
+        chainId: base.id
+      },
+      {
+        address: CONTRACT_ADDRESSES.weth,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [CONTRACT_ADDRESSES.peeples_blazery],
+        chainId: base.id
+      },
+      {
+        address: CONTRACT_ADDRESSES.peeples,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [CONTRACT_ADDRESSES.peeples_blazery],
+        chainId: base.id
+      },
+      {
+        address: PEEPLES_DONUT_LP_TOKEN_ADDRESS,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [address!],
+        chainId: base.id
+      }
+    ],
+    // query: {
+    //   refetchInterval: 3_000,
+    // },
+  });
+
+  const [minerData, slot0Data, paymentTokenAddress, priceData, donutLPBalance, LPTotalSupply, donutBlazeryBalance, wethBlazeryBalance, peeplesBlazeryBalance, userLPBalance] = data ?? [];
+
+  const peeplesBlazeryState = useMemo(() => {
+    if (!minerData || !slot0Data || !paymentTokenAddress || !priceData || !donutLPBalance || !LPTotalSupply || !donutBlazeryBalance || !wethBlazeryBalance || !peeplesBlazeryBalance || !userLPBalance) {
+      return null;
+    }
+    const donutPriceEth = minerData.result?.donutPrice;
+    const paymentTokenPrice = donutPriceEth && donutLPBalance.result && LPTotalSupply.result ? donutPriceEth * donutLPBalance.result * 2n / LPTotalSupply.result : 0n
+    const totalBlazeValue = (parseFloat(formatUnits(donutBlazeryBalance.result || 0n, 18)) * (donutPriceEth ? parseFloat(formatUnits(donutPriceEth, 18)) : 0) * ethUsdPrice) + (parseFloat(formatUnits(wethBlazeryBalance.result || 0n, 18)) * ethUsdPrice) + parseFloat(formatUnits(peeplesBlazeryBalance.result || 0n, 18)) * (peeplesTokenPrice || 0);
+    return {
+      initPrice: slot0Data.result?.initPrice,
+      epochId: slot0Data.result?.epochId,
+      startTime: slot0Data.result?.startTime,
+      paymentToken: paymentTokenAddress.result,
+      price: priceData.result,
+      paymentTokenPrice,
+      donutBlazeryBalance: donutBlazeryBalance.result,
+      wethBlazeryBalance: wethBlazeryBalance.result,
+      peeplesBlazeryBalance: peeplesBlazeryBalance.result,
+      totalBlazeValue,
+      userLPBalance: userLPBalance.result,
+      pnl: totalBlazeValue - (parseFloat(formatUnits(priceData.result || 0n, 18)) * (paymentTokenPrice ? parseFloat(formatUnits(paymentTokenPrice, 18)) : 0) * ethUsdPrice)
+    }
+  }, [minerData, slot0Data, paymentTokenAddress, priceData, donutLPBalance, LPTotalSupply, donutBlazeryBalance, wethBlazeryBalance, peeplesBlazeryBalance, ethUsdPrice, peeplesTokenPrice, userLPBalance]);
+
+
   const ERC20_ABI = [
     {
       inputs: [
@@ -203,7 +331,7 @@ export default function BlazeryPage() {
   useEffect(() => {
     if (!readyRef.current && auctionState) {
       readyRef.current = true;
-      sdk.actions.ready().catch(() => {});
+      sdk.actions.ready().catch(() => { });
     }
   }, [auctionState]);
 
@@ -219,6 +347,62 @@ export default function BlazeryPage() {
       hash: txHash,
       chainId: base.id,
     });
+
+  const handlePeeplesBlaze = useCallback(async () => {
+    if (!peeplesBlazeryState) return;
+    try {
+      let targetAddress = address;
+      if (!targetAddress) {
+        if (!primaryConnector) {
+          throw new Error("Wallet connector not available yet.");
+        }
+        const result = await connectAsync({
+          connector: primaryConnector,
+          chainId: base.id,
+        });
+        targetAddress = result.accounts[0];
+      }
+      if (!targetAddress) {
+        throw new Error("Unable to determine wallet address.");
+      }
+
+      const price = peeplesBlazeryState.price;
+      const epochId = toBigInt(peeplesBlazeryState.epochId as number);
+      const deadline = BigInt(
+        Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS
+      );
+      const maxPaymentTokenAmount = price;
+
+      if (txStep === "idle") {
+        setTxStep("approving");
+        writeContract({
+          account: targetAddress as Address,
+          address: PEEPLES_DONUT_LP_TOKEN_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [CONTRACT_ADDRESSES.peeples_blazery as Address, price as bigint],
+          chainId: base.id,
+        });
+        return;
+      }
+      if (txStep === "buying") {
+        writeContract({
+          account: targetAddress as Address,
+          address: CONTRACT_ADDRESSES.peeples_blazery as Address,
+          abi: PEEPLES_BLAZERY,
+          functionName: "buy",
+          args: [[CONTRACT_ADDRESSES.donut, CONTRACT_ADDRESSES.weth, CONTRACT_ADDRESSES.peeples], targetAddress as Address, epochId as bigint, deadline as bigint, maxPaymentTokenAmount as bigint],
+          chainId: base.id,
+        });
+      }
+    } catch (e: any) {
+      console.error("Failed to blaze:", e);
+      showBlazeResult("failure");
+      setTxStep("idle");
+      resetWrite();
+    }
+
+  }, [peeplesBlazeryState]);
 
   const handleBlaze = useCallback(async () => {
     if (!auctionState) return;
@@ -249,7 +433,7 @@ export default function BlazeryPage() {
       // If we're in idle or approval failed, start with approval
       if (txStep === "idle") {
         setTxStep("approving");
-        await writeContract({
+        writeContract({
           account: targetAddress as Address,
           address: LP_TOKEN_ADDRESS,
           abi: ERC20_ABI,
@@ -262,7 +446,7 @@ export default function BlazeryPage() {
 
       // If approval succeeded, now call buy
       if (txStep === "buying") {
-        await writeContract({
+        writeContract({
           account: targetAddress as Address,
           address: CONTRACT_ADDRESSES.multicall as Address,
           abi: MULTICALL_ABI,
@@ -353,6 +537,9 @@ export default function BlazeryPage() {
   const hasInsufficientLP =
     auctionState && auctionState.paymentTokenBalance < auctionState.price;
 
+  const hasInsufficientPeeplesLP =
+    (peeplesBlazeryState?.userLPBalance && peeplesBlazeryState?.price) ? peeplesBlazeryState?.userLPBalance < peeplesBlazeryState?.price : true;
+
   // Calculate profit/loss for blazing
   const blazeProfitLoss = useMemo(() => {
     if (!auctionState) return null;
@@ -378,12 +565,22 @@ export default function BlazeryPage() {
     };
   }, [auctionState, ethUsdPrice]);
 
+
   const isBlazeDisabled =
     !auctionState ||
     isWriting ||
     isConfirming ||
     blazeResult !== null ||
     hasInsufficientLP;
+
+  const isPeeplesBlazeDisabled =
+    !peeplesBlazeryState ||
+    isWriting ||
+    isConfirming ||
+    blazeResult !== null ||
+    hasInsufficientPeeplesLP;
+
+  console.log(isPeeplesBlazeDisabled, " isPeeplesBlazeDisabled ");
 
   const userDisplayName =
     context?.user?.displayName ?? context?.user?.username ?? "Farcaster user";
@@ -395,18 +592,21 @@ export default function BlazeryPage() {
   const userAvatarUrl = context?.user?.pfpUrl ?? null;
 
   return (
-    <main className="flex h-screen w-screen justify-center overflow-hidden bg-[#FFFDD0] coming-soon text-white">
+    <main className="flex h-screen w-screen justify-center bg-[#FFFDD0] coming-soon text-white">
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden rounded-[28px] bg-[#FFFDD0] px-2 pb-4 shadow-inner"
+        className="relative flex h-full w-full flex-1 flex-col rounded-[28px] bg-[#FFFDD0] px-2 pb-4 shadow-inner"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
         }}
       >
-        <div className="flex flex-1 flex-col overflow-hidden text-black">
+        <div className="flex flex-1 flex-col text-black">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold tracking-wide amatic flex items-center justify-center">
-            <img src="/media/peeples_donuts.png" className="h-[50px] w-[50px]" />
+              <img
+                src="/media/peeples_donuts.png"
+                className="h-[50px] w-[50px]"
+              />
               PEEPLES DONUTS
             </h1>
             {context?.user ? (
@@ -430,107 +630,219 @@ export default function BlazeryPage() {
               </div>
             ) : null}
           </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Card className="border-[#82AF96] bg-[#FFFFF0]">
-              <CardContent className="grid gap-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
-                  PAY
-                </div>
-                <div className="text-2xl font-semibold text-[#82AF96]">
-                  {auctionPriceDisplay} LP
-                </div>
-                <div className="text-xs text-gray-600">
-                  $
-                  {auctionState
-                    ? (
+          <div className="mt-1 flex flex-col">
+            <h2 className="uppercase font-bold">Donut-ETH Blazery:</h2>
+            <div className="mt-1 grid grid-cols-2 gap-2 h-fit">
+              <Card className="border-[#82AF96] bg-[#FFFFF0]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    PAY
+                  </div>
+                  <div className="text-2xl font-semibold text-[#82AF96]">
+                    {auctionPriceDisplay} LP
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {auctionState
+                      ? (
                         Number(formatEther(auctionState.price)) *
                         Number(formatEther(auctionState.paymentTokenPrice)) *
                         ethUsdPrice
                       ).toFixed(2)
-                    : "0.00"}
-                </div>
-              </CardContent>
-            </Card>
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
 
-            <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
-              <CardContent className="grid gap-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
-                  GET
-                </div>
-                <div className="text-2xl font-semibold">
-                  Ξ{claimableDisplay}
-                </div>
-                <div className="text-xs text-gray-600">
-                  $
-                  {auctionState
-                    ? (
+              <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    GET
+                  </div>
+                  <div className="text-2xl font-semibold">
+                    Ξ{claimableDisplay}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {auctionState
+                      ? (
                         Number(formatEther(auctionState.wethAccumulated)) *
                         ethUsdPrice
                       ).toFixed(2)
-                    : "0.00"}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2">
-            <Button
-              className="w-full rounded-2xl bg-[#82AF96] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AF96]/90 disabled:cursor-not-allowed disabled:bg-[#82AF96]/80"
-              onClick={handleBlaze}
-              disabled={isBlazeDisabled}
-            >
-              {buttonLabel}
-            </Button>
-
-            <div className="flex items-center justify-between px-1">
-              <div className="text-xs text-black">
-                Available:{" "}
-                <span className="text-black font-semibold">
-                  {address && auctionState?.paymentTokenBalance
-                    ? formatEth(auctionState.paymentTokenBalance, 4)
-                    : "0"}
-                </span>{" "}
-                DONUT-ETH LP
-              </div>
-              <a
-                href="https://app.uniswap.org/explore/pools/base/0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#82AF96] hover:text-[#82AF96]/80 font-semibold transition-colors"
-              >
-                Get LP →
-              </a>
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Profit/Loss Warning Message */}
-            {blazeProfitLoss && (
-              <div
-                className={cn(
-                  "text-center text-sm font-semibold px-2 py-1.5 rounded",
-                  blazeProfitLoss.isProfitable
-                    ? "text-green-400"
-                    : "text-red-400"
-                )}
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                className="w-full rounded-2xl bg-[#82AF96] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AF96]/90 disabled:cursor-not-allowed disabled:bg-[#82AF96]/80"
+                onClick={handleBlaze}
+                disabled={isBlazeDisabled}
               >
-                {blazeProfitLoss.isProfitable ? (
-                  <>
-                    💰 Profitable blaze! You'll receive $
-                    {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
-                    {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP (
-                    {blazeProfitLoss.profitLoss >= 0 ? "+" : ""}$
-                    {blazeProfitLoss.profitLoss.toFixed(2)})
-                  </>
-                ) : (
-                  <>
-                    ⚠️ Unprofitable blaze! You'll receive $
-                    {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
-                    {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP ($
-                    {blazeProfitLoss.profitLoss.toFixed(2)})
-                  </>
-                )}
+                {buttonLabel} DONUT-ETH LP
+              </Button>
+
+              <div className="flex items-center justify-between px-1">
+                <div className="text-xs text-black">
+                  Available:{" "}
+                  <span className="text-black font-semibold">
+                    {address && auctionState?.paymentTokenBalance
+                      ? formatEth(auctionState.paymentTokenBalance, 4)
+                      : "0"}
+                  </span>{" "}
+                  DONUT-ETH LP
+                </div>
+                <a
+                  href="https://app.uniswap.org/explore/pools/base/0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#82AF96] hover:text-[#82AF96]/80 font-semibold transition-colors"
+                >
+                  Get LP →
+                </a>
               </div>
-            )}
+
+              {/* Profit/Loss Warning Message */}
+              {blazeProfitLoss && (
+                <div
+                  className={cn(
+                    "text-center text-sm font-semibold px-2 py-1.5 rounded",
+                    blazeProfitLoss.isProfitable
+                      ? "text-green-400"
+                      : "text-red-400"
+                  )}
+                >
+                  {blazeProfitLoss.isProfitable ? (
+                    <>
+                      💰 Profitable blaze! You'll receive $
+                      {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
+                      {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP (
+                      {blazeProfitLoss.profitLoss >= 0 ? "+" : ""}$
+                      {blazeProfitLoss.profitLoss.toFixed(2)})
+                    </>
+                  ) : (
+                    <>
+                      ⚠️ Unprofitable blaze! You'll receive $
+                      {blazeProfitLoss.wethValueInUsd.toFixed(2)} in WETH for $
+                      {blazeProfitLoss.lpValueInUsd.toFixed(2)} in LP ($
+                      {blazeProfitLoss.profitLoss.toFixed(2)})
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-2">
+            <h2 className="uppercase font-bold">Donut-PEEPLES Blazery:</h2>
+            <div className="mt-1 grid grid-cols-2 gap-2 h-fit">
+              <Card className="border-[#82AF96] bg-[#FFFFF0]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    PAY
+                  </div>
+                  <div className="text-2xl font-semibold text-[#82AF96]">
+                    {parseFloat(
+                      formatUnits(peeplesBlazeryState?.price || 0n, 18)
+                    ).toFixed(4)}{" "}
+                    LP
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {peeplesBlazeryState
+                      ? (
+                        Number(formatEther(peeplesBlazeryState?.price || 0n)) *
+                        Number(formatEther(peeplesBlazeryState?.paymentTokenPrice || 0n)) *
+                        ethUsdPrice
+                      ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-[#82AF96] bg-[#FFFFF0] text-[#82AD94]">
+                <CardContent className="grid gap-1.5 p-2.5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-800">
+                    GET
+                  </div>
+                  <div className="text-base font-semibold flex flex-col">
+                    <span>{formatUnits(peeplesBlazeryState?.wethBlazeryBalance || 0n, 18)} $WETH</span>
+                    <span>{formatUnits(peeplesBlazeryState?.donutBlazeryBalance || 0n, 18)} $DONUT</span>
+                    <span>{formatUnits(peeplesBlazeryState?.peeplesBlazeryBalance || 0n, 18)} $PEEPLES</span>
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    $
+                    {peeplesBlazeryState
+                      ? (
+                        peeplesBlazeryState.totalBlazeValue || 0
+                      ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                className="w-full rounded-2xl bg-[#82AF96] py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-[#82AF96]/90 disabled:cursor-not-allowed disabled:bg-[#82AF96]/80"
+                onClick={handlePeeplesBlaze}
+                disabled={isPeeplesBlazeDisabled as boolean}
+              >
+                {buttonLabel} DONUT-PEEPLES LP
+              </Button>
+
+              <div className="flex items-center justify-between px-1">
+                <div className="text-xs text-black">
+                  Available:{" "}
+                  <span className="text-black font-semibold">
+                    {address && peeplesBlazeryState?.userLPBalance
+                      ? formatEth(peeplesBlazeryState.userLPBalance, 4)
+                      : "0"}
+                  </span>{" "}
+                  DONUT-PEEPLES LP
+                </div>
+                <a
+                  href="https://app.uniswap.org/explore/pools/base/0x189f254685CD46E48CbdCe39E9572695dDe92402"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#82AF96] hover:text-[#82AF96]/80 font-semibold transition-colors"
+                >
+                  Get LP →
+                </a>
+              </div>
+
+              {/* Profit/Loss Warning Message */}
+              {peeplesBlazeryState?.pnl && (
+                <div
+                  className={cn(
+                    "text-center text-sm font-semibold px-2 py-1.5 rounded",
+                    peeplesBlazeryState?.pnl > 0
+                      ? "text-green-400"
+                      : "text-red-400"
+                  )}
+                >
+                  {peeplesBlazeryState.pnl > 0 ? (
+                    <>
+                      💰 Profitable blaze! You'll receive $
+                      {peeplesBlazeryState.totalBlazeValue.toFixed(2)} in Tokens for $
+                      {(Number(formatEther(peeplesBlazeryState?.price || 0n)) *
+                        Number(formatEther(peeplesBlazeryState?.paymentTokenPrice || 0n)) *
+                        ethUsdPrice).toFixed(2)} in LP
+                    </>
+                  ) : (
+                    <>
+                      ⚠️ Unprofitable blaze! You'll receive $
+                      {peeplesBlazeryState.totalBlazeValue.toFixed(2)} in Tokens for $
+                      {(Number(formatEther(peeplesBlazeryState?.price || 0n)) *
+                        Number(formatEther(peeplesBlazeryState?.paymentTokenPrice || 0n)) *
+                        ethUsdPrice).toFixed(2)} in LP
+
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </div>
