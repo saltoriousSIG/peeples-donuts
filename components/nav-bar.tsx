@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Flame, Info, Droplets } from "lucide-react";
+import { Flame, Info, Droplets, Gavel } from "lucide-react";
 
 export function NavBar() {
   const pathname = usePathname();
@@ -41,6 +41,8 @@ export function NavBar() {
           <Flame className="w-6 h-6" />
         </Link>
 
+
+
         <Link
           href="/"
           className={cn(
@@ -56,6 +58,18 @@ export function NavBar() {
               pathname === "/" ? "border-[#82AD94]" : "border-gray-400"
             )}
           />
+        </Link>
+
+        <Link
+          href="/auction"
+          className={cn(
+            "flex items-center justify-center p-3 transition-colors",
+            pathname === "/auction"
+              ? "text-[#82AD94]"
+              : "text-gray-400 hover:text-gray-300"
+          )}
+        >
+          <Gavel className="w-6 h-6" />
         </Link>
 
         <Link

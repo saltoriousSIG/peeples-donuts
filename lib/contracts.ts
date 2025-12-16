@@ -1,6 +1,7 @@
 export const CONTRACT_ADDRESSES = {
   weth: "0x4200000000000000000000000000000000000006",
   donut: "0xAE4a37d554C6D6F3E398546d8566B25052e0169C",
+  peeples: "0x0eb9d965DBEfbfB131216A4250A29C9b0693Cb07",
   miner: "0xF69614F4Ee8D4D3879dd53d5A039eB3114C794F6",
   multicall: "0x3ec144554b484C6798A683E34c8e8E222293f323",
   provider: "0x463B1E8E78B28027b423Ea6f00695f01a84EFe72",
@@ -1767,6 +1768,197 @@ export const PEEPLES_BLAZERY = [
   {
     inputs: [],
     name: "priceMultiplier",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+export const PEEPLES_AUCTION = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "bidder",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "feeRecipient",
+        type: "address",
+      },
+    ],
+    name: "AuctionBid",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "winner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "winningBid",
+        type: "uint256",
+      },
+    ],
+    name: "AuctionSettled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "winner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "winningBid",
+        type: "uint256",
+      },
+    ],
+    name: "AuctionSettled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "endTime",
+        type: "uint256",
+      },
+    ],
+    name: "AuctionStarted",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "endTime",
+        type: "uint256",
+      },
+    ],
+    name: "AuctionStarted",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "feeRecipient",
+        type: "address",
+      },
+    ],
+    name: "bid",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getCurrentAuction",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "endTime",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "highestBidder",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "highestBid",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "feeRecipient",
+        type: "address",
+      },
+      {
+        internalType: "bool",
+        name: "ended",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getMinimumBid",
     outputs: [
       {
         internalType: "uint256",

@@ -17,6 +17,7 @@ import {
   WITHDRAW,
   VOTE,
   CLAIM,
+  PEEPLES_AUCTION
 } from "../lib/contracts";
 import {
   PoolConfig,
@@ -42,6 +43,9 @@ interface PoolContextType {
   shareTokenTotalSupply?: bigint;
   hasUserVoted?: boolean;
   pendingClaim?: PendingClaim;
+  currentAuction: any;
+  minAuctionBid: bigint;
+  auctionBid: (amount: bigint, feeRecipient: Address) => Promise<void>;
   claim: () => void;
   deposit: (amount: number) => Promise<void>;
   withdraw: (amount: number) => void;
@@ -182,6 +186,28 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
     },
   });
 
+  const { data: currentAuction } = useReadContract({
+    address: CONTRACT_ADDRESSES.pool,
+    abi: PEEPLES_AUCTION,
+    functionName: "getCurrentAuction",
+    args: [],
+    chainId: base.id,
+    query: {
+      refetchInterval: 3_000,
+    },
+  });
+
+  const { data: minAuctionBid } = useReadContract({
+    address: CONTRACT_ADDRESSES.pool,
+    abi: PEEPLES_AUCTION,
+    functionName: "getMinimumBid",
+    args: [],
+    chainId: base.id,
+    query: {
+      refetchInterval: 1_000,
+    },
+  });
+
   const {
     data: txHash,
     writeContract,
@@ -196,7 +222,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
       chainId: base.id,
     });
 
-  const buyKingGlazer = useCallback(async() => {
+  const buyKingGlazer = useCallback(async () => {
     try {
       if (!isConnected || !address) {
         throw new Error("Wallet not connected");
@@ -307,12 +333,52 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
     [writeContractAsync, isConnected, address]
   );
 
+  const auctionBid = useCallback(async (amount: bigint, feeRecipient: Address) => {
+    try {
+      if (!isConnected || !address) {
+        throw new Error("Wallet not connected");
+      }
+
+      await writeContractAsync({
+        account: address as Address,
+        address: CONTRACT_ADDRESSES.peeples as Address,
+        abi: ERC20,
+        functionName: "approve",
+        args: [CONTRACT_ADDRESSES.pool as Address, BigInt(amount)],
+        chainId: base.id,
+      });
+
+      await sleep(3500);
+
+      writeContract({
+        account: address as Address,
+        address: CONTRACT_ADDRESSES.pool as Address,
+        abi: PEEPLES_AUCTION,
+        functionName: "bid",
+        args: [amount, feeRecipient],
+        chainId: base.id
+      });
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }, [writeContract, isConnected, address])
+
   const value: PoolContextType = {
     config: config as PoolConfig,
     tvl: tvl as PoolTVL,
     state: state as PoolState,
     shareToken: addresses?.shareToken || "0x",
     isTxPending: isWriting,
+    currentAuction: {
+      auctionId: currentAuction && currentAuction[0],
+      endTime: currentAuction && currentAuction[1],
+      highestBidder: currentAuction && currentAuction[2],
+      highestBid: currentAuction && currentAuction[3],
+      feeRecipient: currentAuction && currentAuction[4],
+      ended: currentAuction && currentAuction[5],
+    },
+    minAuctionBid: minAuctionBid || 0n,
+    auctionBid: auctionBid,
     deposit,
     claim,
     pendingClaim,
