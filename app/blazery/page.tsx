@@ -49,6 +49,8 @@ type AuctionState = {
   paymentTokenBalance: bigint;
 };
 
+type TxStep = "idle" | "approving" | "buying";
+
 const DEADLINE_BUFFER_SECONDS = 5 * 60;
 const LP_TOKEN_ADDRESS =
   "0xD1DbB2E56533C55C3A637D13C53aeEf65c5D5703" as Address;
@@ -77,36 +79,72 @@ const initialsFrom = (label?: string) => {
   return stripped.slice(0, 2).toUpperCase();
 };
 
+const ERC20_ABI = [
+  {
+    inputs: [
+      { internalType: "address", name: "spender", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
 export default function BlazeryPage() {
   // Mock data
   const readyRef = useRef(false);
   const autoConnectAttempted = useRef(false);
   const [context, setContext] = useState<MiniAppContext | null>(null);
   const [ethUsdPrice, setEthUsdPrice] = useState<number>(3500);
-  const [blazeResult, setBlazeResult] = useState<"success" | "failure" | null>(
-    null
-  );
-  const [txStep, setTxStep] = useState<"idle" | "approving" | "buying">("idle");
-  const blazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
 
-  const resetBlazeResult = useCallback(() => {
-    if (blazeResultTimeoutRef.current) {
-      clearTimeout(blazeResultTimeoutRef.current);
-      blazeResultTimeoutRef.current = null;
+  // Separate state for each blaze operation
+  const [donutEthBlazeResult, setDonutEthBlazeResult] = useState<"success" | "failure" | null>(null);
+  const [donutEthTxStep, setDonutEthTxStep] = useState<TxStep>("idle");
+  const donutEthResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [peeplesDonutBlazeResult, setPeeplesDonutBlazeResult] = useState<"success" | "failure" | null>(null);
+  const [peeplesDonutTxStep, setPeeplesDonutTxStep] = useState<TxStep>("idle");
+  const peeplesDonutResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Donut-ETH blaze result handlers
+  const resetDonutEthBlazeResult = useCallback(() => {
+    if (donutEthResultTimeoutRef.current) {
+      clearTimeout(donutEthResultTimeoutRef.current);
+      donutEthResultTimeoutRef.current = null;
     }
-    setBlazeResult(null);
+    setDonutEthBlazeResult(null);
   }, []);
 
-  const showBlazeResult = useCallback((result: "success" | "failure") => {
-    if (blazeResultTimeoutRef.current) {
-      clearTimeout(blazeResultTimeoutRef.current);
+  const showDonutEthBlazeResult = useCallback((result: "success" | "failure") => {
+    if (donutEthResultTimeoutRef.current) {
+      clearTimeout(donutEthResultTimeoutRef.current);
     }
-    setBlazeResult(result);
-    blazeResultTimeoutRef.current = setTimeout(() => {
-      setBlazeResult(null);
-      blazeResultTimeoutRef.current = null;
+    setDonutEthBlazeResult(result);
+    donutEthResultTimeoutRef.current = setTimeout(() => {
+      setDonutEthBlazeResult(null);
+      donutEthResultTimeoutRef.current = null;
+    }, 3000);
+  }, []);
+
+  // Peeples-Donut blaze result handlers
+  const resetPeeplesDonutBlazeResult = useCallback(() => {
+    if (peeplesDonutResultTimeoutRef.current) {
+      clearTimeout(peeplesDonutResultTimeoutRef.current);
+      peeplesDonutResultTimeoutRef.current = null;
+    }
+    setPeeplesDonutBlazeResult(null);
+  }, []);
+
+  const showPeeplesDonutBlazeResult = useCallback((result: "success" | "failure") => {
+    if (peeplesDonutResultTimeoutRef.current) {
+      clearTimeout(peeplesDonutResultTimeoutRef.current);
+    }
+    setPeeplesDonutBlazeResult(result);
+    peeplesDonutResultTimeoutRef.current = setTimeout(() => {
+      setPeeplesDonutBlazeResult(null);
+      peeplesDonutResultTimeoutRef.current = null;
     }, 3000);
   }, []);
 
@@ -140,15 +178,18 @@ export default function BlazeryPage() {
     };
 
     fetchPrice();
-    const interval = setInterval(fetchPrice, 60_000); // Update every minute
+    const interval = setInterval(fetchPrice, 60_000);
 
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (blazeResultTimeoutRef.current) {
-        clearTimeout(blazeResultTimeoutRef.current);
+      if (donutEthResultTimeoutRef.current) {
+        clearTimeout(donutEthResultTimeoutRef.current);
+      }
+      if (peeplesDonutResultTimeoutRef.current) {
+        clearTimeout(peeplesDonutResultTimeoutRef.current);
       }
     };
   }, []);
@@ -207,7 +248,7 @@ export default function BlazeryPage() {
       console.log(data.peeples_price);
       return data.peeples_price;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
 
@@ -284,9 +325,6 @@ export default function BlazeryPage() {
         chainId: base.id
       }
     ],
-    // query: {
-    //   refetchInterval: 3_000,
-    // },
   });
 
   const [minerData, slot0Data, paymentTokenAddress, priceData, donutLPBalance, LPTotalSupply, donutBlazeryBalance, wethBlazeryBalance, peeplesBlazeryBalance, userLPBalance] = data ?? [];
@@ -314,20 +352,6 @@ export default function BlazeryPage() {
     }
   }, [minerData, slot0Data, paymentTokenAddress, priceData, donutLPBalance, LPTotalSupply, donutBlazeryBalance, wethBlazeryBalance, peeplesBlazeryBalance, ethUsdPrice, peeplesTokenPrice, userLPBalance]);
 
-
-  const ERC20_ABI = [
-    {
-      inputs: [
-        { internalType: "address", name: "spender", type: "address" },
-        { internalType: "uint256", name: "amount", type: "uint256" },
-      ],
-      name: "approve",
-      outputs: [{ internalType: "bool", name: "", type: "bool" }],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-  ] as const;
-
   useEffect(() => {
     if (!readyRef.current && auctionState) {
       readyRef.current = true;
@@ -335,21 +359,38 @@ export default function BlazeryPage() {
     }
   }, [auctionState]);
 
+  // Separate writeContract hooks for each blaze operation
   const {
-    data: txHash,
-    writeContract,
-    isPending: isWriting,
-    reset: resetWrite,
+    data: donutEthTxHash,
+    writeContract: writeDonutEthContract,
+    isPending: isDonutEthWriting,
+    isError: isDonutEthError,
+    reset: resetDonutEthWrite,
   } = useWriteContract();
 
-  const { data: receipt, isLoading: isConfirming } =
+  const {
+    data: peeplesDonutTxHash,
+    writeContract: writePeeplesDonutContract,
+    isPending: isPeeplesDonutWriting,
+    isError: isPeeplesDonutError,
+    reset: resetPeeplesDonutWrite,
+  } = useWriteContract();
+
+  const { data: donutEthReceipt, isLoading: isDonutEthConfirming } =
     useWaitForTransactionReceipt({
-      hash: txHash,
+      hash: donutEthTxHash,
+      chainId: base.id,
+    });
+
+  const { data: peeplesDonutReceipt, isLoading: isPeeplesDonutConfirming } =
+    useWaitForTransactionReceipt({
+      hash: peeplesDonutTxHash,
       chainId: base.id,
     });
 
   const handlePeeplesBlaze = useCallback(async () => {
     if (!peeplesBlazeryState) return;
+    resetPeeplesDonutBlazeResult();
     try {
       let targetAddress = address;
       if (!targetAddress) {
@@ -373,9 +414,9 @@ export default function BlazeryPage() {
       );
       const maxPaymentTokenAmount = price;
 
-      if (txStep === "idle") {
-        setTxStep("approving");
-        writeContract({
+      if (peeplesDonutTxStep === "idle") {
+        setPeeplesDonutTxStep("approving");
+        writePeeplesDonutContract({
           account: targetAddress as Address,
           address: PEEPLES_DONUT_LP_TOKEN_ADDRESS,
           abi: ERC20_ABI,
@@ -385,8 +426,8 @@ export default function BlazeryPage() {
         });
         return;
       }
-      if (txStep === "buying") {
-        writeContract({
+      if (peeplesDonutTxStep === "buying") {
+        writePeeplesDonutContract({
           account: targetAddress as Address,
           address: CONTRACT_ADDRESSES.peeples_blazery as Address,
           abi: PEEPLES_BLAZERY,
@@ -396,17 +437,26 @@ export default function BlazeryPage() {
         });
       }
     } catch (e: any) {
-      console.error("Failed to blaze:", e);
-      showBlazeResult("failure");
-      setTxStep("idle");
-      resetWrite();
+      console.error("Failed to peeples blaze:", e);
+      showPeeplesDonutBlazeResult("failure");
+      setPeeplesDonutTxStep("idle");
+      resetPeeplesDonutWrite();
     }
-
-  }, [peeplesBlazeryState]);
+  }, [
+    address,
+    connectAsync,
+    peeplesBlazeryState,
+    primaryConnector,
+    peeplesDonutTxStep,
+    resetPeeplesDonutBlazeResult,
+    resetPeeplesDonutWrite,
+    showPeeplesDonutBlazeResult,
+    writePeeplesDonutContract,
+  ]);
 
   const handleBlaze = useCallback(async () => {
     if (!auctionState) return;
-    resetBlazeResult();
+    resetDonutEthBlazeResult();
     try {
       let targetAddress = address;
       if (!targetAddress) {
@@ -430,10 +480,9 @@ export default function BlazeryPage() {
       );
       const maxPaymentTokenAmount = price;
 
-      // If we're in idle or approval failed, start with approval
-      if (txStep === "idle") {
-        setTxStep("approving");
-        writeContract({
+      if (donutEthTxStep === "idle") {
+        setDonutEthTxStep("approving");
+        writeDonutEthContract({
           account: targetAddress as Address,
           address: LP_TOKEN_ADDRESS,
           abi: ERC20_ABI,
@@ -444,9 +493,8 @@ export default function BlazeryPage() {
         return;
       }
 
-      // If approval succeeded, now call buy
-      if (txStep === "buying") {
-        writeContract({
+      if (donutEthTxStep === "buying") {
+        writeDonutEthContract({
           account: targetAddress as Address,
           address: CONTRACT_ADDRESSES.multicall as Address,
           abi: MULTICALL_ABI,
@@ -457,62 +505,117 @@ export default function BlazeryPage() {
       }
     } catch (error) {
       console.error("Failed to blaze:", error);
-      showBlazeResult("failure");
-      setTxStep("idle");
-      resetWrite();
+      showDonutEthBlazeResult("failure");
+      setDonutEthTxStep("idle");
+      resetDonutEthWrite();
     }
   }, [
     address,
     connectAsync,
     auctionState,
     primaryConnector,
-    resetBlazeResult,
-    resetWrite,
-    showBlazeResult,
-    writeContract,
-    txStep,
+    donutEthTxStep,
+    resetDonutEthBlazeResult,
+    resetDonutEthWrite,
+    showDonutEthBlazeResult,
+    writeDonutEthContract,
   ]);
 
+  // Handle Donut-ETH write errors (user rejection/cancellation)
   useEffect(() => {
-    if (!receipt) return;
-    if (receipt.status === "success" || receipt.status === "reverted") {
-      if (receipt.status === "reverted") {
-        showBlazeResult("failure");
-        setTxStep("idle");
+    if (isDonutEthError && donutEthTxStep !== "idle") {
+      setDonutEthTxStep("idle");
+      resetDonutEthWrite();
+    }
+  }, [isDonutEthError, donutEthTxStep, resetDonutEthWrite]);
+
+  // Handle Peeples-Donut write errors (user rejection/cancellation)
+  useEffect(() => {
+    if (isPeeplesDonutError && peeplesDonutTxStep !== "idle") {
+      setPeeplesDonutTxStep("idle");
+      resetPeeplesDonutWrite();
+    }
+  }, [isPeeplesDonutError, peeplesDonutTxStep, resetPeeplesDonutWrite]);
+
+  // Handle Donut-ETH receipt
+  useEffect(() => {
+    if (!donutEthReceipt) return;
+    if (donutEthReceipt.status === "success" || donutEthReceipt.status === "reverted") {
+      if (donutEthReceipt.status === "reverted") {
+        showDonutEthBlazeResult("failure");
+        setDonutEthTxStep("idle");
         refetchAuctionState();
         const resetTimer = setTimeout(() => {
-          resetWrite();
+          resetDonutEthWrite();
         }, 500);
         return () => clearTimeout(resetTimer);
       }
 
-      // If approval succeeded, now call buy
-      if (txStep === "approving") {
-        resetWrite();
-        setTxStep("buying");
+      if (donutEthTxStep === "approving") {
+        resetDonutEthWrite();
+        setDonutEthTxStep("buying");
         return;
       }
 
-      // If buy succeeded
-      if (txStep === "buying") {
-        showBlazeResult("success");
-        setTxStep("idle");
+      if (donutEthTxStep === "buying") {
+        showDonutEthBlazeResult("success");
+        setDonutEthTxStep("idle");
         refetchAuctionState();
         const resetTimer = setTimeout(() => {
-          resetWrite();
+          resetDonutEthWrite();
         }, 500);
         return () => clearTimeout(resetTimer);
       }
     }
     return;
-  }, [receipt, refetchAuctionState, resetWrite, showBlazeResult, txStep]);
+  }, [donutEthReceipt, donutEthTxStep, refetchAuctionState, resetDonutEthWrite, showDonutEthBlazeResult]);
 
-  // Auto-trigger buy after approval
+  // Handle Peeples-Donut receipt
   useEffect(() => {
-    if (txStep === "buying" && !isWriting && !isConfirming && !txHash) {
+    if (!peeplesDonutReceipt) return;
+    if (peeplesDonutReceipt.status === "success" || peeplesDonutReceipt.status === "reverted") {
+      if (peeplesDonutReceipt.status === "reverted") {
+        showPeeplesDonutBlazeResult("failure");
+        setPeeplesDonutTxStep("idle");
+        refetchAuctionState();
+        const resetTimer = setTimeout(() => {
+          resetPeeplesDonutWrite();
+        }, 500);
+        return () => clearTimeout(resetTimer);
+      }
+
+      if (peeplesDonutTxStep === "approving") {
+        resetPeeplesDonutWrite();
+        setPeeplesDonutTxStep("buying");
+        return;
+      }
+
+      if (peeplesDonutTxStep === "buying") {
+        showPeeplesDonutBlazeResult("success");
+        setPeeplesDonutTxStep("idle");
+        refetchAuctionState();
+        const resetTimer = setTimeout(() => {
+          resetPeeplesDonutWrite();
+        }, 500);
+        return () => clearTimeout(resetTimer);
+      }
+    }
+    return;
+  }, [peeplesDonutReceipt, peeplesDonutTxStep, refetchAuctionState, resetPeeplesDonutWrite, showPeeplesDonutBlazeResult]);
+
+  // Auto-trigger buy after approval for Donut-ETH
+  useEffect(() => {
+    if (donutEthTxStep === "buying" && !isDonutEthWriting && !isDonutEthConfirming && !donutEthTxHash && !isDonutEthError) {
       handleBlaze();
     }
-  }, [txStep, isWriting, isConfirming, txHash, handleBlaze]);
+  }, [donutEthTxStep, isDonutEthWriting, isDonutEthConfirming, donutEthTxHash, isDonutEthError, handleBlaze]);
+
+  // Auto-trigger buy after approval for Peeples-Donut
+  useEffect(() => {
+    if (peeplesDonutTxStep === "buying" && !isPeeplesDonutWriting && !isPeeplesDonutConfirming && !peeplesDonutTxHash && !isPeeplesDonutError) {
+      handlePeeplesBlaze();
+    }
+  }, [peeplesDonutTxStep, isPeeplesDonutWriting, isPeeplesDonutConfirming, peeplesDonutTxHash, isPeeplesDonutError, handlePeeplesBlaze]);
 
   const auctionPriceDisplay = auctionState
     ? formatEth(auctionState.price, auctionState.price === 0n ? 0 : 5)
@@ -522,17 +625,29 @@ export default function BlazeryPage() {
     ? formatEth(auctionState.wethAccumulated, 8)
     : "—";
 
-  const buttonLabel = useMemo(() => {
+  const donutEthButtonLabel = useMemo(() => {
     if (!auctionState) return "Loading…";
-    if (blazeResult === "success") return "SUCCESS";
-    if (blazeResult === "failure") return "FAILURE";
-    if (isWriting || isConfirming) {
-      if (txStep === "approving") return "APPROVING…";
-      if (txStep === "buying") return "BLAZING…";
+    if (donutEthBlazeResult === "success") return "SUCCESS";
+    if (donutEthBlazeResult === "failure") return "FAILURE";
+    if (isDonutEthWriting || isDonutEthConfirming) {
+      if (donutEthTxStep === "approving") return "APPROVING…";
+      if (donutEthTxStep === "buying") return "BLAZING…";
       return "PROCESSING…";
     }
     return "BLAZE";
-  }, [blazeResult, isConfirming, isWriting, auctionState, txStep]);
+  }, [donutEthBlazeResult, isDonutEthConfirming, isDonutEthWriting, auctionState, donutEthTxStep]);
+
+  const peeplesDonutButtonLabel = useMemo(() => {
+    if (!peeplesBlazeryState) return "Loading…";
+    if (peeplesDonutBlazeResult === "success") return "SUCCESS";
+    if (peeplesDonutBlazeResult === "failure") return "FAILURE";
+    if (isPeeplesDonutWriting || isPeeplesDonutConfirming) {
+      if (peeplesDonutTxStep === "approving") return "APPROVING…";
+      if (peeplesDonutTxStep === "buying") return "BLAZING…";
+      return "PROCESSING…";
+    }
+    return "BLAZE";
+  }, [peeplesDonutBlazeResult, isPeeplesDonutConfirming, isPeeplesDonutWriting, peeplesBlazeryState, peeplesDonutTxStep]);
 
   const hasInsufficientLP =
     auctionState && auctionState.paymentTokenBalance < auctionState.price;
@@ -544,13 +659,11 @@ export default function BlazeryPage() {
   const blazeProfitLoss = useMemo(() => {
     if (!auctionState) return null;
 
-    // LP token value in USD
     const lpValueInEth =
       Number(formatEther(auctionState.price)) *
       Number(formatEther(auctionState.paymentTokenPrice));
     const lpValueInUsd = lpValueInEth * ethUsdPrice;
 
-    // WETH value in USD
     const wethReceivedInEth = Number(formatEther(auctionState.wethAccumulated));
     const wethValueInUsd = wethReceivedInEth * ethUsdPrice;
 
@@ -568,16 +681,16 @@ export default function BlazeryPage() {
 
   const isBlazeDisabled =
     !auctionState ||
-    isWriting ||
-    isConfirming ||
-    blazeResult !== null ||
+    isDonutEthWriting ||
+    isDonutEthConfirming ||
+    donutEthBlazeResult !== null ||
     hasInsufficientLP;
 
   const isPeeplesBlazeDisabled =
     !peeplesBlazeryState ||
-    isWriting ||
-    isConfirming ||
-    blazeResult !== null ||
+    isPeeplesDonutWriting ||
+    isPeeplesDonutConfirming ||
+    peeplesDonutBlazeResult !== null ||
     hasInsufficientPeeplesLP;
 
   console.log(isPeeplesBlazeDisabled, " isPeeplesBlazeDisabled ");
@@ -681,7 +794,7 @@ export default function BlazeryPage() {
                 onClick={handleBlaze}
                 disabled={isBlazeDisabled}
               >
-                {buttonLabel} DONUT-ETH LP
+                {donutEthButtonLabel} DONUT-ETH LP
               </Button>
 
               <div className="flex items-center justify-between px-1">
@@ -788,7 +901,7 @@ export default function BlazeryPage() {
                 onClick={handlePeeplesBlaze}
                 disabled={isPeeplesBlazeDisabled as boolean}
               >
-                {buttonLabel} DONUT-PEEPLES LP
+                {peeplesDonutButtonLabel} DONUT-PEEPLES LP
               </Button>
 
               <div className="flex items-center justify-between px-1">
