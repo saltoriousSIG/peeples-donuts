@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
+import axios from "axios";
 import {
   useAccount,
   useConnect,
@@ -10,6 +11,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
 import { base } from "wagmi/chains";
 import { formatEther, zeroAddress, type Address, formatUnits } from "viem";
 
@@ -196,8 +198,24 @@ export default function BlazeryPage() {
     return rawAuctionState as unknown as AuctionState;
   }, [rawAuctionState]);
 
+  const {} = useQuery({
+    queryKey: ["peeples_price"],
+    queryFn: async () => {
+      const { data } = await axios.get('https://www.clanker.world/api/tokens?q=PEEPLES3&fids=483713');
+      console.log(data);
+    },
+    enabled: !!address,
+  });
+
   const { data } = useReadContracts({
     contracts: [
+      {
+        address: CONTRACT_ADDRESSES.multicall,
+        abi: MULTICALL_ABI,
+        functionName: "getMiner",
+        args: [zeroAddress],
+        chainId: base.id,
+      },
       {
         address: CONTRACT_ADDRESSES.peeples_blazery,
         abi: PEEPLES_BLAZERY,
@@ -224,7 +242,6 @@ export default function BlazeryPage() {
       refetchInterval: 3_000,
     },
   });
-  console.log("blazery data", data);
 
   const ERC20_ABI = [
     {
