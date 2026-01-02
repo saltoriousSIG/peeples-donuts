@@ -63,7 +63,7 @@ export const STRATEGY_MINUTES_BREAKEVEN: Record<Strategy, number> = {
 export const STRATEGY_MULTIPLIER: Record<Strategy, number> = {
   [Strategy.CONSERVATIVE]: 1.0,
   [Strategy.MODERATE]: 2.5,
-  [Strategy.AGGRESSIVE]: 3,
+  [Strategy.AGGRESSIVE]: 3.0,
   [Strategy.DEGEN]: 3.5,
 };
 
