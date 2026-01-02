@@ -75,7 +75,6 @@ export function getBreakevenThreshold(
   const capitalRatio = poolBalanceETH / glazePriceETH;
   const effectiveRatio =
     (STRATEGY_MULTIPLIER[strategy] * capitalRatio) / (capitalRatio + 1);
-
   return Math.floor(
     DECAY_WINDOW * effectiveRatio * STRATEGY_MULTIPLIER[strategy]
   );
