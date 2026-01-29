@@ -2,52 +2,61 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { X, Droplets, Gavel, Vote, Info, ChevronRight } from "lucide-react";
+import { X, Droplets, Gavel, Vote, Info, ChevronRight, Zap } from "lucide-react";
+
+export type FeatureType = "pool" | "auction" | "flair" | "flashloan" | "about";
 
 interface PowerDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenFeature: (feature: FeatureType) => void;
 }
 
 const DRAWER_ITEMS: {
-  href: "/" | "/pool" | "/auction" | "/about";
+  feature: FeatureType;
   icon: typeof Droplets;
   label: string;
   description: string;
   color: string;
 }[] = [
   {
-    href: "/pool",
+    feature: "pool",
     icon: Droplets,
     label: "Family Pool",
     description: "Deposit, withdraw, and manage your position",
     color: "#82AD94",
   },
   {
-    href: "/auction",
+    feature: "auction",
     icon: Gavel,
     label: "LSG Auction",
     description: "Bid for the next Limited Series Glaze",
     color: "#FFB5BA",
   },
   {
-    href: "/pool",
+    feature: "pool",
     icon: Vote,
     label: "Pool Voting",
     description: "Vote on pool strategy each week",
     color: "#B48EF7",
   },
   {
-    href: "/about",
+    feature: "flashloan",
+    icon: Zap,
+    label: "Flash Loans",
+    description: "Borrow WETH or DONUT with no collateral",
+    color: "#F4A627",
+  },
+  {
+    feature: "about",
     icon: Info,
     label: "About",
     description: "Learn about Peeples Donuts",
-    color: "#F4A627",
+    color: "#5B8BD4",
   },
 ];
 
-export function PowerDrawer({ isOpen, onClose }: PowerDrawerProps) {
+export function PowerDrawer({ isOpen, onClose, onOpenFeature }: PowerDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   // Handle escape key
@@ -115,15 +124,17 @@ export function PowerDrawer({ isOpen, onClose }: PowerDrawerProps) {
 
         {/* Menu Items */}
         <div className="px-4 space-y-2">
-          {DRAWER_ITEMS.map((item) => {
+          {DRAWER_ITEMS.map((item, index) => {
             const Icon = item.icon;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
+              <button
+                key={`${item.feature}-${index}`}
+                onClick={() => {
+                  onClose();
+                  onOpenFeature(item.feature);
+                }}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-2xl",
+                  "flex items-center gap-4 p-4 rounded-2xl w-full text-left",
                   "bg-white/50 hover:bg-white/70",
                   "transition-all duration-200",
                   "hover:scale-[1.02] active:scale-[0.98]"
@@ -140,7 +151,7 @@ export function PowerDrawer({ isOpen, onClose }: PowerDrawerProps) {
                   <p className="text-xs text-[#8B7355]">{item.description}</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-[#D4915D]/50" />
-              </Link>
+              </button>
             );
           })}
         </div>

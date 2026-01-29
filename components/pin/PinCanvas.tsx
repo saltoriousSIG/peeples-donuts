@@ -10,14 +10,19 @@ import { usePool } from "@/providers/PoolProvider";
 import { PinDisplay } from "./PinDisplay";
 import { YieldTicker } from "./YieldTicker";
 import { ClaimButton } from "./ClaimButton";
-import { PowerDrawer } from "@/components/discovery/PowerDrawer";
+import { PowerDrawer, type FeatureType } from "@/components/discovery/PowerDrawer";
 import { FusionHint } from "@/components/discovery/FusionHint";
-import { NavBar } from "@/components/nav-bar";
 import { PageHeader, type MiniAppContext } from "@/components/page-header";
 import { AddToFarcasterButton } from "@/components/add-to-farcaster-button";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
 import { ShoppingBag, Sparkles, TrendingUp, Percent, ChevronUp } from "lucide-react";
-import Link from "next/link";
+import {
+  AboutModal,
+  AuctionModal,
+  FlairModal,
+  PoolModal,
+  type ModalType,
+} from "@/components/modals";
 
 export function PinCanvas() {
   const { context: frameContext, isFrameAdded } = useFrameContext();
@@ -25,6 +30,11 @@ export function PinCanvas() {
   const { hasEquippedFlair, canFuse, shareBalance } = useUserState();
   const { tvl, shareTokenTotalSupply } = usePool();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+
+  const handleOpenFeature = (feature: FeatureType) => {
+    setActiveModal(feature);
+  };
 
   const { data: ethPrice = 3500 } = useQuery({
     queryKey: ["ethPrice"],
@@ -79,8 +89,8 @@ export function PinCanvas() {
             <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.05s' }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-[#2D2319]">My Pin</h2>
-                <Link
-                  href="/pins"
+                <button
+                  onClick={() => setActiveModal("flair")}
                   className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-lg",
                     "bg-[#D4915D]/10 hover:bg-[#D4915D]/20",
@@ -90,12 +100,12 @@ export function PinCanvas() {
                 >
                   <ShoppingBag className="w-3 h-3" />
                   Flair Shop
-                </Link>
+                </button>
               </div>
 
               <PinDisplay
                 onEmptySlotClick={() => {
-                  window.location.href = "/pins";
+                  setActiveModal("flair");
                 }}
               />
             </div>
@@ -124,10 +134,10 @@ export function PinCanvas() {
                 {hasEquippedFlair ? (
                   <ClaimButton />
                 ) : (
-                  <Link
-                    href="/pins"
+                  <button
+                    onClick={() => setActiveModal("flair")}
                     className={cn(
-                      "block p-4 rounded-2xl",
+                      "block w-full p-4 rounded-2xl",
                       "bg-gradient-to-r from-[#F4A627]/10 to-[#E85A71]/10",
                       "border border-[#D4915D]/20",
                       "text-center"
@@ -140,7 +150,7 @@ export function PinCanvas() {
                     <p className="text-xs text-[#8B7355] mt-1">
                       Visit the Flair Shop to activate your yield
                     </p>
-                  </Link>
+                  </button>
                 )}
               </div>
             </div>
@@ -179,11 +189,30 @@ export function PinCanvas() {
         </div>
       </div>
 
-      {/* Navigation Bar */}
-      <NavBar />
-
       {/* Power Drawer */}
-      <PowerDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+      <PowerDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onOpenFeature={handleOpenFeature}
+      />
+
+      {/* Feature Modals */}
+      <PoolModal
+        isOpen={activeModal === "pool"}
+        onClose={() => setActiveModal(null)}
+      />
+      <AuctionModal
+        isOpen={activeModal === "auction"}
+        onClose={() => setActiveModal(null)}
+      />
+      <FlairModal
+        isOpen={activeModal === "flair"}
+        onClose={() => setActiveModal(null)}
+      />
+      <AboutModal
+        isOpen={activeModal === "about"}
+        onClose={() => setActiveModal(null)}
+      />
     </main>
   );
 }

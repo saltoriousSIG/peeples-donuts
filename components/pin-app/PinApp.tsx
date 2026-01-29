@@ -4,21 +4,32 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserState } from "@/hooks/useUserState";
 import { useOnboardingMint } from "@/hooks/useOnboardingMint";
 import { useFlair } from "@/hooks/useFlair";
 import { useFlairYield } from "@/hooks/useFlairYield";
 import { usePins } from "@/hooks/usePins";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
+import { usePool } from "@/providers/PoolProvider";
 import { ShareModal, type ShareAction } from "@/components/share-modal";
 import generate_pin from "@/lib/server_functions/generate_pin";
+import { formatUnits } from "viem";
 import {
   FLAIR_TOKENS,
   getFlairImagePath,
+  GAUGE_ICONS,
   type FlairTokenData,
   type GaugeName,
-  type Rarity,
 } from "@/lib/flair-data";
+import {
+  AboutModal,
+  AuctionModal,
+  FlairModal,
+  FlashLoanModal,
+  PoolModal,
+  type ModalType,
+} from "@/components/modals";
 
 // Bronze flair options for onboarding
 const BRONZE_FLAIR = FLAIR_TOKENS.filter((f) => f.rarity === "Bronze");
@@ -26,20 +37,27 @@ const BRONZE_FLAIR = FLAIR_TOKENS.filter((f) => f.rarity === "Bronze");
 // Role descriptions for each flair type - you're joining the team!
 const ROLE_INFO: Record<GaugeName, { title: string; description: string }> = {
   "Donut": { title: "Baker", description: "Earn $DONUT" },
-  "Donut/WETH LP": { title: "Manager", description: "Earn LP fees" },
-  "USDC": { title: "Cashier", description: "Earn $USDC" },
+  "Teller": { title: "Teller", description: "Earn fees" },
+  "Donut wETH LP": { title: "Manager", description: "Earn LP fees" },
+  "Aerodrome": { title: "Pilot", description: "Earn $AERO" },
+  "Clanker": { title: "Engineer", description: "Earn $CLANKER" },
   "QR": { title: "Promoter", description: "Earn $QR" },
-  "Aero": { title: "Delivery", description: "Earn $AERO" },
+  "USDC": { title: "Cashier", description: "Earn $USDC" },
 };
 
+interface PinAppProps {
+  initialModal?: ModalType;
+}
+
 // The donut - a living, breathing companion
-export function PinApp() {
+export function PinApp({ initialModal = null }: PinAppProps) {
   const { segment, hasPin, hasShares, hasEquippedFlair } = useUserState();
   const { fUser } = useFrameContext();
   const { equippedFlair } = useFlair();
   const { pinId } = usePins();
-  const { claimableYield, hasClaimableYield, claimYield } = useFlairYield();
+  const { claimableYield, hasClaimableYield, claimYield, isClaiming } = useFlairYield();
   const { isMinting, mintProgress, executeOnboarding, executeFreeMint } = useOnboardingMint();
+  const { tvl, shareTokenBalance, shareTokenTotalSupply } = usePool();
 
   // Interaction states
   const [phase, setPhase] = useState<"idle" | "awakening" | "choosing" | "feeding" | "birthing" | "celebrating">("idle");
@@ -49,6 +67,15 @@ export function PinApp() {
   // Generated pin preview
   const [generatedPinUrl, setGeneratedPinUrl] = useState<string | null>(null);
   const [isGeneratingPin, setIsGeneratingPin] = useState(false);
+
+  // TEMP: Load pin from localStorage for testing
+  useEffect(() => {
+    const savedPin = localStorage.getItem("peeples_test_pin");
+    if (savedPin) {
+      setGeneratedPinUrl(savedPin);
+      setJustMinted(true); // Simulate having minted
+    }
+  }, []);
 
   // Track if user just minted (for mock mode - overrides hasPin/hasFlair)
   const [justMinted, setJustMinted] = useState(false);
@@ -61,6 +88,9 @@ export function PinApp() {
 
   // Bottom drawer for power features
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Modal state for power features
+  const [activeModal, setActiveModal] = useState<ModalType>(initialModal);
 
   // Animation states
   const [breathePhase, setBreathePhase] = useState(0);
@@ -81,6 +111,33 @@ export function PinApp() {
     () => claimableYield?.tokens.reduce((sum, t) => sum + t.formattedAmount, 0) ?? 0,
     [claimableYield]
   );
+
+  // Calculate yield power from equipped flair (sum of weights)
+  const yieldPower = useMemo(() => {
+    return equippedFlair.reduce((sum, flair) => {
+      if (!flair) return sum;
+      return sum + (flair.weight || 1);
+    }, 0);
+  }, [equippedFlair]);
+
+  // Calculate pool position value in ETH
+  const poolPositionEth = useMemo(() => {
+    if (!shareTokenBalance || !shareTokenTotalSupply || shareTokenTotalSupply === 0n || !tvl) {
+      return 0;
+    }
+    const sharePercent = Number(shareTokenBalance) / Number(shareTokenTotalSupply);
+    const wethValue = parseFloat(formatUnits(tvl.wethTVL || 0n, 18)) * sharePercent;
+    return wethValue;
+  }, [shareTokenBalance, shareTokenTotalSupply, tvl]);
+
+  // Get primary role from first equipped flair
+  const primaryRole = useMemo(() => {
+    const firstFlair = equippedFlair.find(f => f !== null);
+    if (firstFlair) {
+      return ROLE_INFO[firstFlair.gauge as GaugeName]?.title || "Member";
+    }
+    return "Member";
+  }, [equippedFlair]);
 
   // Donut tap handler
   const handleDonutTap = useCallback(() => {
@@ -146,7 +203,9 @@ export function PinApp() {
         setIsGeneratingPin(true);
         try {
           const pinResult = await generate_pin(fUser.fid);
-          setGeneratedPinUrl(pinResult.imageUrl);
+          setGeneratedPinUrl(pinResult.pinataUrl);
+          // TEMP: Save to localStorage for testing
+          localStorage.setItem("peeples_test_pin", pinResult.pinataUrl);
         } catch (error) {
           console.error("Failed to generate pin:", error);
         } finally {
@@ -160,11 +219,6 @@ export function PinApp() {
       setPhase("idle");
     }
   }, [selectedFlair, selectedAmount, hasShares, hasPin, executeOnboarding, executeFreeMint, fUser?.fid]);
-
-  // Navigate to flair shop
-  const handleFlairSlotTap = useCallback(() => {
-    window.location.href = "/pins";
-  }, []);
 
   // Calculate breathing scale
   const breatheScale = 1 + Math.sin(breathePhase * 0.0174) * 0.02;
@@ -191,22 +245,55 @@ export function PinApp() {
     return (
       <div className="fixed inset-0 bg-gradient-to-b from-[#FDF6E3] via-[#FAF0DC] to-[#F5E6C8] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="pt-4 pb-2 px-6 flex items-center justify-between">
-          <img
-            src="/media/peeples_donuts.png"
-            alt="Peeples Donuts"
-            className="w-10 h-10 object-contain"
-          />
-          <div className="px-3 py-1 bg-[#3D2914] rounded-full">
-            <span className="text-xs font-bold text-[#FAF0DC]">#{pinId || justMinted ? "NEW" : "---"}</span>
+        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 donut-ring">
+              <div className="donut-ring-inner">
+                <img
+                  src="/media/peeples_donuts.png"
+                  alt="Peeples Donuts"
+                  className="w-9 h-9 object-contain"
+                />
+              </div>
+            </div>
+            <span className="text-2xl font-bold tracking-wider amatic text-[#3D2914]">
+              PEEPLES DONUTS
+            </span>
           </div>
+
+          {/* User Badge */}
+          {fUser && (
+            <div className="glazed-card px-3 py-2 flex items-center gap-2">
+              <Avatar className="h-8 w-8 ring-2 ring-[#D4915D]/30">
+                <AvatarImage
+                  src={fUser.pfpUrl || undefined}
+                  alt={fUser.displayName || fUser.username || "User"}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-gradient-to-br from-[#D4915D] to-[#B8763C] text-white text-[10px] font-bold">
+                  {(fUser.displayName || fUser.username || "?").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="leading-tight text-left">
+                <div className="text-xs font-bold text-[#3D2914] max-w-[80px] truncate">
+                  {fUser.displayName || fUser.username}
+                </div>
+                <div className="text-[9px] text-[#8B7355]">
+                  @{fUser.username || `fid:${fUser.fid}`}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Main content - Pin card */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 -mt-8">
-          {/* Pin image */}
-          <div className="relative mb-4">
-            <div className="w-48 h-48 rounded-2xl overflow-hidden shadow-xl border-4 border-white">
+        {/* Main content */}
+        <div className="flex-1 flex flex-col items-center px-4 overflow-y-auto">
+          {/* Pin image - HERO */}
+          <div className="relative my-4">
+            {/* Glow effect */}
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-[#F4A627]/30 to-[#E85A71]/20 blur-2xl" />
+            <div className="relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
               {generatedPinUrl ? (
                 <img
                   src={generatedPinUrl}
@@ -221,42 +308,75 @@ export function PinApp() {
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-[#F4A627] to-[#D4915D] flex items-center justify-center">
-                  <span className="text-5xl">🍩</span>
+                  <span className="text-6xl">🍩</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Role/Flair display */}
-          {(hasFlair || selectedFlair) && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md mb-4">
-              <img
-                src={getFlairImagePath(
-                  (equippedFlair[0]?.gauge as GaugeName) || selectedFlair?.gauge || "Donut",
-                  (equippedFlair[0]?.rarity as Rarity) || "Bronze"
-                )}
-                alt=""
-                className="w-6 h-6 object-contain"
-              />
-              <span className="text-sm font-medium text-[#3D2914]">
-                {ROLE_INFO[(equippedFlair[0]?.gauge as GaugeName) || selectedFlair?.gauge || "Donut"].title}
-              </span>
-            </div>
-          )}
+          {/* Role badge */}
+          <div className="flex items-center gap-2 px-5 py-2 bg-white rounded-full shadow-lg mb-3">
+            <span className="text-base font-bold text-[#3D2914]">{primaryRole}</span>
+          </div>
 
-          {/* Yield status */}
-          <div className="text-center mb-6">
-            {hasClaimableYield ? (
-              <>
-                <p className="text-xs text-[#6B9B7A] font-medium mb-1">Ready to claim</p>
-                <p className="text-3xl font-bold text-[#3D2914]">${totalYield.toFixed(4)}</p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-[#8B7355] mb-1">Yield accumulating</p>
-                <p className="text-lg font-medium text-[#3D2914]">$0.0000</p>
-              </>
+          {/* Flair Slots - 3 interactive slots */}
+          <div className="flex justify-center gap-3 mb-5">
+            {[0, 1, 2].map((slotIndex) => {
+              const flair = equippedFlair[slotIndex];
+              const isEmpty = !flair;
+
+              return (
+                <button
+                  key={slotIndex}
+                  onClick={() => setActiveModal("flair")}
+                  className={cn(
+                    "w-16 h-16 rounded-xl flex flex-col items-center justify-center transition-all",
+                    "hover:scale-105 active:scale-95",
+                    isEmpty
+                      ? "bg-white/50 border-2 border-dashed border-[#D4915D]/40"
+                      : "bg-white shadow-md border-2 border-white"
+                  )}
+                >
+                  {flair ? (
+                    <>
+                      <span className="text-2xl">{GAUGE_ICONS[flair.gauge as GaugeName]}</span>
+                      <span className="text-[8px] font-bold text-[#8B7355] mt-0.5">
+                        {(flair.rarity as string).slice(0, 4)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-2xl text-[#D4915D]/40">+</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Stats section */}
+          <div className="w-full max-w-xs space-y-3 mb-5">
+            {/* Ready to Claim - only show if > 0 */}
+            {hasClaimableYield && (
+              <div className="bg-gradient-to-r from-[#6B9B7A] to-[#5C946E] rounded-2xl p-4 text-center shadow-lg">
+                <p className="text-xs text-white/80 font-medium mb-1">Ready to Claim</p>
+                <p className="text-2xl font-bold text-white">${totalYield.toFixed(2)}</p>
+              </div>
             )}
+
+            {/* Secondary stats row */}
+            <div className="flex gap-3">
+              <div className="flex-1 bg-white/70 rounded-xl p-3 text-center">
+                <p className="text-[10px] text-[#8B7355] uppercase tracking-wide">Position</p>
+                <p className="text-sm font-bold text-[#3D2914]">
+                  {poolPositionEth > 0 ? `${poolPositionEth.toFixed(4)} Ξ` : "0 Ξ"}
+                </p>
+              </div>
+              <div className="flex-1 bg-white/70 rounded-xl p-3 text-center">
+                <p className="text-[10px] text-[#8B7355] uppercase tracking-wide">Yield Power</p>
+                <p className="text-sm font-bold text-[#3D2914]">
+                  {yieldPower > 0 ? `${yieldPower}x` : "—"}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Action buttons */}
@@ -273,16 +393,21 @@ export function PinApp() {
                     setShareOpen(true);
                   });
                 }}
-                className="w-full py-4 rounded-full font-bold text-lg bg-[#6B9B7A] text-white shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                disabled={isClaiming}
+                className={cn(
+                  "w-full py-4 rounded-full font-bold text-lg bg-[#6B9B7A] text-white shadow-lg",
+                  "hover:scale-[1.02] active:scale-[0.98] transition-transform",
+                  isClaiming && "opacity-70"
+                )}
               >
-                Claim ${totalYield.toFixed(2)}
+                {isClaiming ? "Claiming..." : `Claim $${totalYield.toFixed(2)}`}
               </button>
             ) : (
               <button
                 onClick={() => {
                   setShareAction("mint-pin");
                   setShareDetails({
-                    message: `I'm now part of the Peeples Donuts team! 🍩`,
+                    message: `I'm part of the Peeples Donuts team! 🍩`,
                     embed: generatedPinUrl || "https://peeplesdonuts.com",
                   });
                   setShareOpen(true);
@@ -294,21 +419,21 @@ export function PinApp() {
             )}
 
             <button
-              onClick={handleFlairSlotTap}
+              onClick={() => setActiveModal("flair")}
               className="w-full py-3 rounded-full font-medium text-[#5C4A3D] bg-white shadow-md hover:shadow-lg transition-shadow"
             >
-              {hasFlair ? "Get More Flair" : "Get Flair to Start Earning"}
+              {hasFlair ? "Manage Flair" : "Get Flair to Earn"}
             </button>
           </div>
         </div>
 
         {/* Bottom drawer handle */}
-        <div className="pb-6">
+        <div className="py-4">
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex items-center justify-center gap-2 text-[#8B7355] text-sm"
+            className="w-full flex items-center justify-center gap-2 text-[#8B7355] text-sm"
           >
-            <span>Explore more</span>
+            <span>More features</span>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
@@ -329,7 +454,7 @@ export function PinApp() {
             "fixed inset-x-0 bottom-0 z-50 bg-[#FDF6E3] rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out",
             drawerOpen ? "translate-y-0" : "translate-y-full"
           )}
-          style={{ maxHeight: "70vh" }}
+          style={{ maxHeight: "60vh" }}
         >
           {/* Drawer handle */}
           <div className="flex justify-center pt-3 pb-2">
@@ -340,65 +465,24 @@ export function PinApp() {
           </div>
 
           {/* Drawer content */}
-          <div className="px-6 pb-8 overflow-y-auto" style={{ maxHeight: "calc(70vh - 40px)" }}>
+          <div className="px-6 pb-8 overflow-y-auto" style={{ maxHeight: "calc(60vh - 40px)" }}>
             <h3 className="text-lg font-bold text-[#3D2914] mb-4">Power Features</h3>
 
-            {/* King Glazer - Featured */}
-            <button
-              onClick={() => {
-                setDrawerOpen(false);
-                window.location.href = "/auction";
-              }}
-              className="w-full p-4 bg-gradient-to-r from-[#F4A627] to-[#D4915D] rounded-2xl mb-3 text-left shadow-lg"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">👑</span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-white">King Glazer</p>
-                  <p className="text-sm text-white/80">Become the top shareholder</p>
-                </div>
-                <svg className="w-5 h-5 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </button>
-
-            {/* Other features */}
             <div className="space-y-2">
               <button
                 onClick={() => {
                   setDrawerOpen(false);
-                  window.location.href = "/auction";
+                  setActiveModal("pool");
                 }}
                 className="w-full p-4 bg-white rounded-xl text-left shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#FAF0DC] rounded-lg flex items-center justify-center">
-                    <span className="text-xl">🎪</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-[#3D2914]">Fee Auction</p>
-                    <p className="text-xs text-[#8B7355]">Bid on protocol fees</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  setDrawerOpen(false);
-                  window.location.href = "/pool";
-                }}
-                className="w-full p-4 bg-white rounded-xl text-left shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#FAF0DC] rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-[#82AD94]/20 rounded-lg flex items-center justify-center">
                     <span className="text-xl">🏊</span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-[#3D2914]">Pool</p>
-                    <p className="text-xs text-[#8B7355]">Manage your position</p>
+                    <p className="font-medium text-[#3D2914]">Family Pool</p>
+                    <p className="text-xs text-[#8B7355]">Deposit, withdraw, manage position</p>
                   </div>
                 </div>
               </button>
@@ -406,17 +490,53 @@ export function PinApp() {
               <button
                 onClick={() => {
                   setDrawerOpen(false);
-                  // Flash loans page TBD
+                  setActiveModal("auction");
                 }}
-                className="w-full p-4 bg-white rounded-xl text-left shadow-sm hover:shadow-md transition-shadow opacity-60"
+                className="w-full p-4 bg-white rounded-xl text-left shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#FAF0DC] rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-[#F4A627]/20 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">👑</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-[#3D2914]">Blazery & Auction</p>
+                    <p className="text-xs text-[#8B7355]">Bid to become Head Baker</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setActiveModal("flashloan");
+                }}
+                className="w-full p-4 bg-white rounded-xl text-left shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#F4A627]/20 rounded-lg flex items-center justify-center">
                     <span className="text-xl">⚡</span>
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-[#3D2914]">Flash Loans</p>
-                    <p className="text-xs text-[#8B7355]">Coming soon</p>
+                    <p className="text-xs text-[#8B7355]">Borrow WETH or DONUT instantly</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setActiveModal("about");
+                }}
+                className="w-full p-4 bg-white rounded-xl text-left shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#B48EF7]/20 rounded-lg flex items-center justify-center">
+                    <span className="text-xl">ℹ️</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-[#3D2914]">About Donut</p>
+                    <p className="text-xs text-[#8B7355]">Learn how it all works</p>
                   </div>
                 </div>
               </button>
@@ -430,6 +550,28 @@ export function PinApp() {
           onClose={() => setShareOpen(false)}
           action={shareAction}
           details={shareDetails}
+        />
+
+        {/* Feature Modals */}
+        <PoolModal
+          isOpen={activeModal === "pool"}
+          onClose={() => setActiveModal(null)}
+        />
+        <AuctionModal
+          isOpen={activeModal === "auction"}
+          onClose={() => setActiveModal(null)}
+        />
+        <FlairModal
+          isOpen={activeModal === "flair"}
+          onClose={() => setActiveModal(null)}
+        />
+        <FlashLoanModal
+          isOpen={activeModal === "flashloan"}
+          onClose={() => setActiveModal(null)}
+        />
+        <AboutModal
+          isOpen={activeModal === "about"}
+          onClose={() => setActiveModal(null)}
         />
       </div>
     );
@@ -702,7 +844,7 @@ export function PinApp() {
                   setPhase("idle");
                   // Navigate to flair shop after a brief moment
                   setTimeout(() => {
-                    window.location.href = "/pins";
+                    setActiveModal("flair");
                   }, 100);
                 }}
                 className="w-full py-4 rounded-full font-bold text-lg bg-[#FAF0DC]/10 text-[#FAF0DC] border border-[#FAF0DC]/30 hover:bg-[#FAF0DC]/20 transition-colors"

@@ -22,10 +22,12 @@ const BRONZE_FLAIR = FLAIR_TOKENS.filter((f) => f.rarity === "Bronze");
 // Yield descriptions for each gauge
 const GAUGE_YIELD_INFO: Record<GaugeName, { yieldToken: string; description: string }> = {
   Donut: { yieldToken: "DONUT", description: "Earn DONUT tokens" },
-  "Donut/WETH LP": { yieldToken: "LP", description: "Earn LP tokens" },
-  USDC: { yieldToken: "USDC", description: "Earn USDC stables" },
+  Teller: { yieldToken: "FEES", description: "Earn protocol fees" },
+  "Donut wETH LP": { yieldToken: "LP", description: "Earn LP tokens" },
+  Aerodrome: { yieldToken: "AERO", description: "Earn Aerodrome" },
+  Clanker: { yieldToken: "CLANKER", description: "Earn Clanker tokens" },
   QR: { yieldToken: "QR", description: "Earn QR tokens" },
-  Aero: { yieldToken: "AERO", description: "Earn Aerodrome" },
+  USDC: { yieldToken: "USDC", description: "Earn USDC stables" },
 };
 
 export function FlairPicker({ onSelect, selectedFlair, disabled }: FlairPickerProps) {
@@ -70,7 +72,7 @@ export function FlairPicker({ onSelect, selectedFlair, disabled }: FlairPickerPr
 
               {/* Gauge name */}
               <span className="text-[9px] font-semibold text-[#5C4A3D] text-center leading-tight mt-1">
-                {flair.gauge === "Donut/WETH LP" ? "LP" : flair.gauge}
+                {flair.gauge === "Donut wETH LP" ? "LP" : flair.gauge}
               </span>
 
               {/* Selection indicator */}

@@ -60,8 +60,8 @@ function getMockFlairData(): { ownedFlair: FlairItem[]; equippedFlair: (FlairIte
     };
     const lpFlair: FlairItem = {
       id: "2",
-      tokenId: 2n,
-      gauge: "Donut/WETH LP",
+      tokenId: 9n,
+      gauge: "Donut wETH LP",
       rarity: "Bronze",
       weight: 1,
       poolFeeDiscount: 20,

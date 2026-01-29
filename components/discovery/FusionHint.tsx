@@ -2,18 +2,29 @@
 
 import { cn } from "@/lib/utils";
 import { Sparkles, ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface FusionHintProps {
   className?: string;
+  onClick?: () => void;
 }
 
-export function FusionHint({ className }: FusionHintProps) {
+export function FusionHint({ className, onClick }: FusionHintProps) {
+  const router = useRouter();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      router.push("/?feature=flair");
+    }
+  };
+
   return (
-    <Link
-      href="/pins"
+    <button
+      onClick={handleClick}
       className={cn(
-        "block p-3 rounded-xl",
+        "block w-full p-3 rounded-xl text-left",
         "bg-gradient-to-r from-[#B48EF7]/10 to-[#E85A71]/10",
         "border border-[#B48EF7]/20",
         "transition-all duration-200",
@@ -33,6 +44,6 @@ export function FusionHint({ className }: FusionHintProps) {
         </div>
         <ArrowRight className="w-4 h-4 text-[#B48EF7]" />
       </div>
-    </Link>
+    </button>
   );
 }

@@ -112,14 +112,14 @@ export const PoolPositionCard: React.FC<PoolPositionCardProps> = ({
           {/* Actions */}
           <div className="flex gap-2">
             <button
-              onClick={() => router.push("/pool")}
+              onClick={() => router.push("/?feature=pool")}
               className="btn-glazed flex-1 py-2.5 text-xs"
             >
               <TrendingUp className="w-3.5 h-3.5 mr-1" />
               Deposit
             </button>
             <button
-              onClick={() => router.push("/pool")}
+              onClick={() => router.push("/?feature=pool")}
               className="btn-glazed btn-strawberry flex-1 py-2.5 text-xs"
             >
               Withdraw
@@ -137,7 +137,7 @@ export const PoolPositionCard: React.FC<PoolPositionCardProps> = ({
             Pool together, earn together. Deposit WETH to start earning.
           </p>
           <button
-            onClick={() => router.push("/pool")}
+            onClick={() => router.push("/?feature=pool")}
             className="btn-glazed w-full py-3 text-sm"
           >
             <Droplets className="w-4 h-4 mr-2" />

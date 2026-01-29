@@ -1,23 +1,27 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useFrameContext } from "@/providers/FrameSDKProvider";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useAccount, useReadContract } from "wagmi";
 import { base } from "wagmi/chains";
 import { zeroAddress, formatUnits, parseUnits } from "viem";
+import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { ERC20 } from "@/lib/abi/erc20";
 import { getEthPrice } from "@/lib/utils";
-import { NavBar } from "@/components/nav-bar";
-import { PageHeader, type MiniAppContext } from "@/components/page-header";
-import { PoolProvider, usePool } from "@/providers/PoolProvider";
+import { usePool } from "@/providers/PoolProvider";
 import { AuctionTabs } from "@/components/auction/auction-tabs";
 import { BlazeryContent } from "@/components/auction/blazery-content";
 import { Countdown } from "@/components/countdown";
 import { toast } from "sonner";
+
+interface AuctionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
 const formatBidAmount = (amount: number): string => {
   if (amount >= 1000000000) {
@@ -269,10 +273,7 @@ function AuctionContent() {
   );
 }
 
-function AuctionPageContent() {
-  const { context: frameContext } = useFrameContext();
-  const context = frameContext as MiniAppContext | null;
-
+export function AuctionModal({ isOpen, onClose }: AuctionModalProps) {
   const { data: ethUsdPrice = 3500 } = useQuery({
     queryKey: ["ethPrice"],
     queryFn: getEthPrice,
@@ -280,50 +281,80 @@ function AuctionPageContent() {
     refetchInterval: 60000,
   });
 
-  return (
-    <main className="flex h-screen w-screen justify-center overflow-hidden bg-gradient-to-b from-[#FDF6E3] via-[#FAF0DC] to-[#F5E6C8] text-[#3D2914]">
-      {/* Decorative floating sprinkles */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[5%] left-[8%] w-3 h-3 rounded-full bg-[#E85A71] opacity-30 animate-bounce-in" style={{ animationDelay: '0.1s' }} />
-        <div className="absolute top-[12%] right-[12%] w-2 h-2 rounded-full bg-[#6B9B7A] opacity-35 animate-bounce-in" style={{ animationDelay: '0.2s' }} />
-        <div className="absolute top-[25%] left-[5%] w-2 h-2 rounded-full bg-[#5B8BD4] opacity-25 animate-bounce-in" style={{ animationDelay: '0.3s' }} />
-        <div className="absolute bottom-[30%] right-[8%] w-2.5 h-2.5 rounded-full bg-[#F4A627] opacity-30 animate-bounce-in" style={{ animationDelay: '0.4s' }} />
-      </div>
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
 
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-1 flex-col overflow-hidden px-3 pb-4"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50",
+          "bg-gradient-to-b from-[#FDF6E3] via-[#FAF0DC] to-[#F5E6C8]",
+          "rounded-t-3xl shadow-2xl",
+          "animate-in slide-in-from-bottom duration-300",
+          "max-h-[90vh] overflow-hidden flex flex-col"
+        )}
         style={{
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
         }}
       >
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <PageHeader
-            title="BLAZERY & AUCTION"
-            subtitle="Bid to become the Head Baker"
-            context={context}
-          />
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
+          <div className="w-12 h-1 rounded-full bg-[#D4915D]/30" />
+        </div>
 
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-styled pb-4">
-            <div className="opacity-0 animate-slide-up" style={{ animationDelay: '0.05s' }}>
-              <AuctionTabs
-                blazeryContent={<BlazeryContent ethUsdPrice={ethUsdPrice} />}
-                auctionContent={<AuctionContent />}
-              />
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pb-4 flex-shrink-0">
+          <div>
+            <h2 className="text-lg font-bold text-[#2D2319]">Blazery & Auction</h2>
+            <p className="text-xs text-[#8B7355]">Bid to become the Head Baker</p>
           </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-[#D4915D]/10 flex items-center justify-center text-[#5C4A3D] hover:bg-[#D4915D]/20 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4 scrollbar-styled">
+          <AuctionTabs
+            blazeryContent={<BlazeryContent ethUsdPrice={ethUsdPrice} />}
+            auctionContent={<AuctionContent />}
+          />
         </div>
       </div>
-      <NavBar />
-    </main>
-  );
-}
-
-export default function AuctionPage() {
-  return (
-    <PoolProvider>
-      <AuctionPageContent />
-    </PoolProvider>
+    </>
   );
 }

@@ -90,7 +90,7 @@ export const PinFlairSummary: React.FC = () => {
           </p>
 
           <button
-            onClick={() => router.push("/pins")}
+            onClick={() => router.push("/?feature=flair")}
             className="mt-auto w-full py-2 rounded-xl text-[10px] font-bold bg-[#B48EF7]/10 text-[#8B5CF6] hover:bg-[#B48EF7]/20 transition-all flex items-center justify-center gap-1"
           >
             Manage <ArrowRight className="w-3 h-3" />
@@ -105,7 +105,7 @@ export const PinFlairSummary: React.FC = () => {
             Mint a pin to unlock flair
           </p>
           <button
-            onClick={() => router.push("/pins")}
+            onClick={() => router.push("/?feature=flair")}
             className="w-full py-2 rounded-xl text-[10px] font-bold bg-[#82AD94]/10 text-[#5C946E] hover:bg-[#82AD94]/20 transition-all"
           >
             Get Your Pin

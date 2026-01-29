@@ -12,6 +12,7 @@ const generate_pin = async (fid: number) => {
     });
     return {
       imageUrl: data.imageUrl,
+      pinataUrl: data.pinataUrl,
       cid: data.pinataCid
     };
   } catch (e) {

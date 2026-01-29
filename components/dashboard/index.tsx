@@ -11,7 +11,6 @@ import { zeroAddress, formatUnits, type Address } from "viem";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { MULTICALL_ABI } from "@/lib/abi/multicall";
 import { getEthPrice } from "@/lib/utils";
-import { NavBar } from "@/components/nav-bar";
 import { PageHeader, type MiniAppContext } from "@/components/page-header";
 import { useQuery } from "@tanstack/react-query";
 import { PoolPositionCard } from "./pool-position-card";
@@ -158,7 +157,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      <NavBar />
     </main>
   );
 }

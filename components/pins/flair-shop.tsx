@@ -1,116 +1,129 @@
 "use client";
 
-import React from "react";
-import { FlairShopModal } from "./flair-shop-modal";
-import { ShoppingBag, Zap, ArrowRight } from "lucide-react";
-import { getFlairImagePath, type Rarity } from "@/lib/flair-data";
+import React, { useState, useMemo } from "react";
+import { useFlair } from "@/hooks/useFlair";
+import {
+  FLAIR_TOKENS,
+  RARITY_ICONS,
+  getFlairImagePath,
+  type Rarity,
+  type FlairTokenData,
+} from "@/lib/flair-data";
+import { Zap, ShoppingCart } from "lucide-react";
+import { useReadContract } from "wagmi";
+import { base } from "wagmi/chains";
+import { CONTRACT_ADDRESSES } from "@/lib/contracts";
+import { DATA } from "@/lib/abi/data";
+
+// Fallback price (in PEEPLES) if contract not available
+const FALLBACK_BRONZE_PRICE = 1000n * 10n ** 18n;
 
 export const FlairShop: React.FC = () => {
-  const rarities: Array<{ name: Rarity; weight: string }> = [
-    { name: "Bronze", weight: "1x" },
-    { name: "Silver", weight: "2x" },
-    { name: "Gold", weight: "4x" },
-    { name: "Platinum", weight: "8x" },
-  ];
+  const [purchasingTokenId, setPurchasingTokenId] = useState<number | null>(null);
+  const { buyFlair, isBuying } = useFlair();
+
+  // Fetch flair mint price from contract
+  const { data: bronzePriceData } = useReadContract({
+    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+    abi: DATA,
+    functionName: "getFlairMintPrice",
+    chainId: base.id,
+    query: {
+      enabled: !!CONTRACT_ADDRESSES.pool,
+      refetchInterval: 30_000,
+    },
+  });
+
+  // Parse price or use fallback
+  const bronzePrice = useMemo(() => {
+    if (bronzePriceData && typeof bronzePriceData === "bigint") {
+      return bronzePriceData;
+    }
+    return FALLBACK_BRONZE_PRICE;
+  }, [bronzePriceData]);
+
+  // Get all Bronze tier flair (one per gauge)
+  const bronzeTokens = FLAIR_TOKENS.filter((t) => t.rarity === "Bronze");
+
+  const handleBuy = async (token: FlairTokenData) => {
+    setPurchasingTokenId(token.tokenId);
+    await buyFlair(BigInt(token.tokenId), bronzePrice);
+    setPurchasingTokenId(null);
+  };
+
+  const formatPrice = () => {
+    return (Number(bronzePrice) / 10 ** 18).toLocaleString();
+  };
+
+  const getRarityGlow = (rarity: Rarity) => {
+    switch (rarity) {
+      case "Bronze": return "ring-[#CD7F32]/40";
+      case "Silver": return "ring-gray-400/40";
+      case "Gold": return "ring-[#FFD700]/40";
+      case "Platinum": return "ring-[#B48EF7]/40";
+      default: return "";
+    }
+  };
 
   return (
-    <div className="glazed-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <ShoppingBag className="w-5 h-5 text-[#82AD94]" />
-        <h2 className="text-lg font-bold text-[#2D2319]">Flair Shop</h2>
+    <div className="space-y-3">
+      {/* Price header */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs text-[#8B7355]">Bronze flair</span>
+        <span className="text-xs font-bold text-[#3D2914]">{formatPrice()} PEEPLES each</span>
       </div>
 
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FFB5BA] to-[#E8919A] p-5 mb-4">
-        <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 blur-xl" />
-        <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/20" />
-
-        <div className="relative">
-          <h3 className="text-xl font-bold text-white amatic mb-2">
-            Boost Your Yield!
-          </h3>
-          <p className="text-white/80 text-sm mb-4 max-w-[200px]">
-            Buy Bronze flair with $PEEPLES. Fuse to unlock higher rarities.
-          </p>
-
-          <FlairShopModal
-            trigger={
-              <button className="btn-glazed bg-white/90 text-[#E8919A] hover:bg-white flex items-center gap-2 text-sm py-2 px-4">
-                <span>Browse Collection</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            }
-          />
-        </div>
-      </div>
-
-      {/* Rarity Preview Grid */}
-      <div className="mb-4">
-        <div className="text-xs font-bold text-[#5C4A3D] uppercase tracking-wider mb-3">
-          Rarity Tiers & Fusion Path
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {rarities.map((rarity, index) => (
+      {/* Flair grid */}
+      <div className="grid grid-cols-1 gap-2">
+        {bronzeTokens.map((token) => {
+          const isPurchasing = purchasingTokenId === token.tokenId;
+          return (
             <div
-              key={rarity.name}
-              className="glazed-card p-2 text-center animate-scale-in relative"
-              style={{ animationDelay: `${index * 0.05}s` }}
+              key={token.tokenId}
+              className="flex items-center gap-3 p-3 bg-white/60 rounded-xl"
             >
-              {index === 0 && (
-                <div className="absolute -top-1 -right-1 bg-[#82AD94] text-white text-[7px] px-1.5 py-0.5 rounded-full font-bold">
-                  BUY
+              {/* Flair image */}
+              <div className={`w-12 h-12 rounded-lg bg-white flex items-center justify-center p-1.5 ring-2 ${getRarityGlow(token.rarity)}`}>
+                <img
+                  src={getFlairImagePath(token.gauge, token.rarity)}
+                  alt={token.gauge}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm text-[#2D2319]">{token.gauge}</div>
+                <div className="flex items-center gap-1 text-[10px] text-[#8B7355]">
+                  <span>{RARITY_ICONS[token.rarity]}</span>
+                  <span>Bronze</span>
+                  <span className="text-[#D4915D]">•</span>
+                  <Zap className="w-3 h-3 text-[#FFD700]" />
+                  <span>{token.weight}x boost</span>
                 </div>
-              )}
-              <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-white to-[#FFF8E7] flex items-center justify-center shadow-md mb-1 p-1">
-                <img
-                  src={getFlairImagePath("Donut", rarity.name)}
-                  alt={`${rarity.name} tier`}
-                  className="w-full h-full object-contain"
-                />
               </div>
-              <div className="text-[9px] font-bold text-[#5C4A3D]">{rarity.name}</div>
-              <div className="flex items-center justify-center gap-0.5 text-[10px] text-[#FFD700]">
-                <Zap className="w-2.5 h-2.5" />
-                <span className="font-bold">{rarity.weight}</span>
-              </div>
+
+              {/* Buy button */}
+              <button
+                onClick={() => handleBuy(token)}
+                disabled={isBuying || isPurchasing}
+                className="px-3 py-2 rounded-lg bg-[#3D2914] text-white text-xs font-bold hover:bg-[#2D1F0F] transition-colors disabled:opacity-50"
+              >
+                {isPurchasing ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <ShoppingCart className="w-4 h-4" />
+                )}
+              </button>
             </div>
-          ))}
-        </div>
-        <p className="text-[10px] text-[#A89485] text-center mt-2">
-          🥉 Bronze is purchasable • Higher tiers via Fusion ⚗️
-        </p>
+          );
+        })}
       </div>
 
-      {/* Gauges Preview */}
-      <div className="bg-white/30 rounded-xl p-3">
-        <div className="text-xs font-bold text-[#5C4A3D] uppercase tracking-wider mb-2">
-          Available Gauges
-        </div>
-        <div className="flex justify-center gap-3">
-          {[
-            { gauge: "Donut" as const, name: "Donut" },
-            { gauge: "Donut/WETH LP" as const, name: "LP" },
-            { gauge: "USDC" as const, name: "USDC" },
-            { gauge: "QR" as const, name: "QR" },
-            { gauge: "Aero" as const, name: "Aero" },
-          ].map((item, i) => (
-            <div
-              key={item.name}
-              className="text-center animate-bounce-in"
-              style={{ animationDelay: `${i * 0.05}s` }}
-            >
-              <div className="w-9 h-9 rounded-xl bg-white/70 flex items-center justify-center shadow-sm mb-1 p-1">
-                <img
-                  src={getFlairImagePath(item.gauge, "Platinum")}
-                  alt={item.name}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="text-[8px] text-[#5C4A3D]">{item.name}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Tip */}
+      <p className="text-[10px] text-[#8B7355] text-center px-4">
+        Fuse 2 of the same flair to upgrade rarity
+      </p>
     </div>
   );
 };

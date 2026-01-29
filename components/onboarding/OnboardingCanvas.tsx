@@ -14,7 +14,6 @@ import { useOnboardingMint } from "@/hooks/useOnboardingMint";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
 import { type FlairTokenData } from "@/lib/flair-data";
 import { PageHeader, type MiniAppContext } from "@/components/page-header";
-import { NavBar } from "@/components/nav-bar";
 import { FlairPicker } from "./FlairPicker";
 import { AmountInput } from "./AmountInput";
 import { MintButton } from "./MintButton";
@@ -348,9 +347,6 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
           </div>
         </div>
       </div>
-
-      {/* Navigation Bar */}
-      <NavBar />
 
       {/* Celebration Modal */}
       <MintCelebration
