@@ -8,7 +8,6 @@ interface CountdownProps {
 }
 
 export function Countdown({ endTime, className = "" }: CountdownProps) {
-    console.log(endTime);
     const [timeLeft, setTimeLeft] = useState("")
 
     useEffect(() => {

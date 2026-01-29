@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import setupAdminWallet from "@/lib/setupAdminWallet";
-import {
-  CONTRACT_ADDRESSES,
-  DATA,
-  MULTICALL_ABI,
-  MANAGE,
-} from "@/lib/contracts";
+import { CONTRACT_ADDRESSES } from "@/lib/contracts";
+import { DATA } from "@/lib/abi/data";
+import { MULTICALL_ABI } from "@/lib/abi/multicall";
+import { MANAGE } from "@/lib/abi/manage";
 import { zeroAddress } from "viem";
 
 export async function GET(req: NextRequest) {

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { ReactNode, useState } from "react";
 import { wagmiConfig } from "@/lib/wagmi";
+import { FrameSDKProvider } from "@/providers/FrameSDKProvider";
 
 type ProvidersProps = {
   children: ReactNode;
@@ -24,7 +25,11 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <FrameSDKProvider>
+          {children}
+        </FrameSDKProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

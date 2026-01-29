@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { sdk } from "@farcaster/miniapp-sdk";
+import { useFrameContext } from "@/providers/FrameSDKProvider";
 import { Button } from "@/components/ui/button";
 import { Plus, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ export function AddToFarcasterButton({
   variant = "default",
   size = "default",
 }: AddToFarcasterButtonProps) {
+  const { handleAddFrame } = useFrameContext();
   const [status, setStatus] = useState<"idle" | "adding" | "success" | "error">(
     "idle"
   );
@@ -27,10 +28,10 @@ export function AddToFarcasterButton({
       setStatus("adding");
       setErrorMessage("");
 
-      // Call the addMiniApp SDK action
+      // Call the addMiniApp SDK action via the context provider
       // If successful, returns { notificationDetails?: ... }
       // If rejected by user, throws RejectedByUser error
-      await sdk.actions.addMiniApp();
+      await handleAddFrame();
 
       // If we get here, the app was successfully added
       setStatus("success");
@@ -69,7 +70,7 @@ export function AddToFarcasterButton({
         setErrorMessage("");
       }, 5000);
     }
-  }, []);
+  }, [handleAddFrame]);
 
   const buttonContent = () => {
     switch (status) {

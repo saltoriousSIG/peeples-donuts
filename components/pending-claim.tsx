@@ -10,7 +10,6 @@ interface PendingClaimProps {
 
 export function PendingClaim({ ethPrice, donutPrice }: PendingClaimProps) {
   const { pendingClaim, claim } = usePool();
-  console.log(pendingClaim)
 
   if (!pendingClaim) {
     return null;

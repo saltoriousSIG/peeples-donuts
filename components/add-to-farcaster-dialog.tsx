@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { sdk } from "@farcaster/miniapp-sdk";
+import { useFrameContext } from "@/providers/FrameSDKProvider";
 import { X, Plus, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export function AddToFarcasterDialog({
   showOnFirstVisit = true,
   storageKey = "glazecorp-add-miniapp-prompt-shown",
 }: AddToFarcasterDialogProps) {
+  const { handleAddFrame } = useFrameContext();
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "adding" | "success" | "error">(
     "idle"
@@ -54,10 +55,10 @@ export function AddToFarcasterDialog({
       setStatus("adding");
       setErrorMessage("");
 
-      // Call the addMiniApp SDK action
+      // Call the addMiniApp SDK action via the context provider
       // If successful, returns { notificationDetails?: ... }
       // If rejected by user, throws RejectedByUser error
-      await sdk.actions.addMiniApp();
+      await handleAddFrame();
 
       // If we get here, the app was successfully added
       setStatus("success");
@@ -101,7 +102,7 @@ export function AddToFarcasterDialog({
         setErrorMessage("");
       }, 5000);
     }
-  }, []);
+  }, [handleAddFrame]);
 
   const handleClose = useCallback(() => {
     if (status === "adding") return; // Don't allow closing while adding

@@ -1,5 +1,7 @@
 import { useReadContract, useAccount } from "wagmi";
-import { CONTRACT_ADDRESSES, MULTICALL_ABI, ERC20 } from "@/lib/contracts";
+import { CONTRACT_ADDRESSES } from "@/lib/contracts";
+import { MULTICALL_ABI } from "@/lib/abi/multicall";
+import { ERC20 } from "@/lib/abi/erc20";
 import { base } from "wagmi/chains";
 import { zeroAddress } from "viem";
 import { usePool } from "../providers/PoolProvider";

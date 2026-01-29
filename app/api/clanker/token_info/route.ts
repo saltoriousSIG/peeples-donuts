@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
 const PEEPLES_TOKEN_ID = 591480;
+
 export async function GET(req: NextRequest) {
   try {
     const {

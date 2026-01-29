@@ -1,24 +1,15 @@
 "use client";
-import React, { createContext, useContext, useCallback } from "react";
+import React, { createContext, useContext, useCallback, useState } from "react";
 import {
   useReadContract,
-  useWriteContract,
-  useWaitForTransactionReceipt,
   useAccount,
 } from "wagmi";
 import { sleep } from "@/lib/utils";
 import { base } from "wagmi/chains";
-import {
-  CONTRACT_ADDRESSES,
-  DATA,
-  DEPOSIT,
-  ERC20,
-  MANAGE,
-  WITHDRAW,
-  VOTE,
-  CLAIM,
-  PEEPLES_AUCTION
-} from "../lib/contracts";
+import { CONTRACT_ADDRESSES } from "../lib/contracts";
+import { DATA } from "../lib/abi/data";
+import { ERC20 } from "../lib/abi/erc20";
+import { AUCTION_ABI } from "../lib/abi/auction";
 import {
   PoolConfig,
   PoolTVL,
@@ -29,6 +20,8 @@ import { type Address } from "viem";
 import { Strategy, Vote as VoteType } from "../types/pool.type";
 import { toast } from "sonner";
 import toggleNotificationSettng from "@/lib/toggleNotificationSetting";
+import { parseContractError } from "@/lib/errors";
+import useContract, { ExecutionType } from "../hooks/useContract";
 
 interface PoolContextType {
   config: PoolConfig;
@@ -46,11 +39,12 @@ interface PoolContextType {
   currentAuction: any;
   minAuctionBid: bigint;
   auctionBid: (amount: bigint, feeRecipient: Address) => Promise<void>;
-  claim: () => void;
+  claim: () => Promise<void>;
   deposit: (amount: number) => Promise<void>;
-  withdraw: (amount: number) => void;
+  withdraw: (amount: number) => Promise<void>;
   buyKingGlazer: () => Promise<void>;
   vote: (strategy: Strategy) => Promise<void>;
+  rebalance: () => Promise<void>;
 }
 
 const PoolContext = createContext<PoolContextType | undefined>(undefined);
@@ -69,6 +63,7 @@ interface PoolProviderProps {
 
 export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
   const { address, isConnected } = useAccount();
+  const [isTxPending, setIsTxPending] = useState(false);
 
   const { data: config, refetch: refetchPoolConfig } = useReadContract({
     address: CONTRACT_ADDRESSES.pool,
@@ -77,8 +72,6 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
     args: [],
     chainId: base.id,
   });
-
-  console.log(config);
 
   const { data: state, refetch: refetchPoolState } = useReadContract({
     address: CONTRACT_ADDRESSES.pool,
@@ -188,7 +181,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
 
   const { data: currentAuction } = useReadContract({
     address: CONTRACT_ADDRESSES.pool,
-    abi: PEEPLES_AUCTION,
+    abi: AUCTION_ABI,
     functionName: "getCurrentAuction",
     args: [],
     chainId: base.id,
@@ -199,7 +192,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
 
   const { data: minAuctionBid } = useReadContract({
     address: CONTRACT_ADDRESSES.pool,
-    abi: PEEPLES_AUCTION,
+    abi: AUCTION_ABI,
     functionName: "getMinimumBid",
     args: [],
     chainId: base.id,
@@ -208,167 +201,239 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
     },
   });
 
-  const {
-    data: txHash,
-    writeContract,
-    isPending: isWriting,
-    writeContractAsync,
-    reset: resetWrite,
-  } = useWriteContract();
-
-  const { data: receipt, isLoading: isConfirming } =
-    useWaitForTransactionReceipt({
-      hash: txHash,
-      chainId: base.id,
-    });
+  // Contract execution hooks
+  const executeWethApprove = useContract(ExecutionType.WRITABLE, "ERC20", "approve", CONTRACT_ADDRESSES.weth as `0x${string}`);
+  const executePeeplesApprove = useContract(ExecutionType.WRITABLE, "ERC20", "approve", CONTRACT_ADDRESSES.peeples as `0x${string}`);
+  const executeDeposit = useContract(ExecutionType.WRITABLE, "Deposit", "depositToPool");
+  const executeWithdraw = useContract(ExecutionType.WRITABLE, "Withdraw", "withdraw");
+  const executeClaim = useContract(ExecutionType.WRITABLE, "Claim", "claimPending");
+  const executeVote = useContract(ExecutionType.WRITABLE, "Vote", "vote");
+  const executeBuyKingGlazer = useContract(ExecutionType.WRITABLE, "Manage", "buyKingGlazer");
+  const executeBid = useContract(ExecutionType.WRITABLE, "Auction", "bid");
+  const executeRebalance = useContract(ExecutionType.WRITABLE, "Manage", "rebalance");
 
   const buyKingGlazer = useCallback(async () => {
+    setIsTxPending(true);
     try {
       if (!isConnected || !address) {
         throw new Error("Wallet not connected");
       }
-      await writeContractAsync({
-        account: address as Address,
-        address: CONTRACT_ADDRESSES.pool as Address,
-        abi: MANAGE,
-        functionName: "buyKingGlazer",
-        args: [""],
-        chainId: base.id,
-      });
+      await executeBuyKingGlazer([""]);
       await toggleNotificationSettng();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: unknown) {
+      const parsed = parseContractError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          contractName: 'Pool',
+          functionName: 'buyKingGlazer'
+        }
+      );
+
+      if (parsed.severity === 'warning') {
+        toast.warning(parsed.title);
+      } else {
+        toast.error(parsed.title, {
+          description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+        });
+      }
+    } finally {
+      setIsTxPending(false);
     }
-  }, [writeContract, isConnected, address]);
+  }, [executeBuyKingGlazer, isConnected, address]);
 
   const deposit = useCallback(
     async (amount: number) => {
+      setIsTxPending(true);
       try {
         if (!isConnected || !address) {
           throw new Error("Wallet not connected");
         }
-        await writeContractAsync({
-          account: address as Address,
-          address: CONTRACT_ADDRESSES.weth as Address,
-          abi: ERC20,
-          functionName: "approve",
-          args: [CONTRACT_ADDRESSES.pool as Address, BigInt(amount)],
-          chainId: base.id,
-        });
+        await executeWethApprove([CONTRACT_ADDRESSES.pool as Address, BigInt(amount)]);
 
         await sleep(3500);
 
-        await writeContractAsync({
-          account: address as Address,
-          address: CONTRACT_ADDRESSES.pool as Address,
-          abi: DEPOSIT,
-          functionName: "depositToPool",
-          args: [BigInt(amount)],
-          chainId: base.id,
-        });
-      } catch (e: any) {
-        toast.error(e.message);
+        await executeDeposit([BigInt(amount)]);
+      } catch (error: unknown) {
+        const parsed = parseContractError(
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            contractName: 'Pool',
+            functionName: 'depositToPool'
+          }
+        );
+
+        if (parsed.severity === 'warning') {
+          toast.warning(parsed.title);
+        } else {
+          toast.error(parsed.title, {
+            description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+          });
+        }
+      } finally {
+        setIsTxPending(false);
       }
     },
-    [writeContractAsync, isConnected, address]
+    [executeWethApprove, executeDeposit, isConnected, address]
   );
 
   const withdraw = useCallback(
-    (amount: number) => {
+    async (amount: number) => {
+      setIsTxPending(true);
       try {
         if (!isConnected || !address) {
           throw new Error("Wallet not connected");
         }
-        writeContract({
-          account: address as Address,
-          address: CONTRACT_ADDRESSES.pool as Address,
-          abi: WITHDRAW,
-          functionName: "withdraw",
-          args: [BigInt(amount)],
-          chainId: base.id,
-        });
-      } catch (e: any) {
-        toast.error(e.message);
+        await executeWithdraw([BigInt(amount)]);
+      } catch (error: unknown) {
+        const parsed = parseContractError(
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            contractName: 'Pool',
+            functionName: 'withdraw'
+          }
+        );
+
+        if (parsed.severity === 'warning') {
+          toast.warning(parsed.title);
+        } else {
+          toast.error(parsed.title, {
+            description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+          });
+        }
+      } finally {
+        setIsTxPending(false);
       }
     },
-    [writeContract, isConnected, address]
+    [executeWithdraw, isConnected, address]
   );
 
-  const claim = useCallback(() => {
+  const claim = useCallback(async () => {
+    setIsTxPending(true);
     try {
       if (!isConnected || !address) {
         throw new Error("Wallet not connected");
       }
-      writeContract({
-        account: address as Address,
-        address: CONTRACT_ADDRESSES.pool as Address,
-        abi: CLAIM,
-        functionName: "claimPending",
-        args: [],
-        chainId: base.id,
-      });
-    } catch (e: any) {
-      toast.error(e.message);
+      await executeClaim([]);
+    } catch (error: unknown) {
+      const parsed = parseContractError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          contractName: 'Pool',
+          functionName: 'claimPending'
+        }
+      );
+
+      if (parsed.severity === 'warning') {
+        toast.warning(parsed.title);
+      } else {
+        toast.error(parsed.title, {
+          description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+        });
+      }
+    } finally {
+      setIsTxPending(false);
     }
-  }, [writeContract, isConnected, address]);
+  }, [executeClaim, isConnected, address]);
 
   const vote = useCallback(
     async (strategy: Strategy) => {
+      setIsTxPending(true);
       try {
         if (!isConnected || !address) {
           throw new Error("Wallet not connected");
         }
-        await writeContractAsync({
-          account: address as Address,
-          address: CONTRACT_ADDRESSES.pool as Address,
-          abi: VOTE,
-          functionName: "vote",
-          args: [strategy],
-          chainId: base.id,
-        });
-      } catch (e: any) {
-        toast.error(e.message);
+        await executeVote([strategy]);
+      } catch (error: unknown) {
+        const parsed = parseContractError(
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            contractName: 'Pool',
+            functionName: 'vote'
+          }
+        );
+
+        if (parsed.severity === 'warning') {
+          toast.warning(parsed.title);
+        } else {
+          toast.error(parsed.title, {
+            description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+          });
+        }
+      } finally {
+        setIsTxPending(false);
       }
     },
-    [writeContractAsync, isConnected, address]
+    [executeVote, isConnected, address]
   );
 
   const auctionBid = useCallback(async (amount: bigint, feeRecipient: Address) => {
+    setIsTxPending(true);
     try {
       if (!isConnected || !address) {
         throw new Error("Wallet not connected");
       }
 
-      await writeContractAsync({
-        account: address as Address,
-        address: CONTRACT_ADDRESSES.peeples as Address,
-        abi: ERC20,
-        functionName: "approve",
-        args: [CONTRACT_ADDRESSES.pool as Address, BigInt(amount)],
-        chainId: base.id,
-      });
+      await executePeeplesApprove([CONTRACT_ADDRESSES.pool as Address, BigInt(amount)]);
 
       await sleep(3500);
 
-      writeContract({
-        account: address as Address,
-        address: CONTRACT_ADDRESSES.pool as Address,
-        abi: PEEPLES_AUCTION,
-        functionName: "bid",
-        args: [amount, feeRecipient],
-        chainId: base.id
-      });
-    } catch (e: any) {
-      toast.error(e.message);
+      await executeBid([amount, feeRecipient]);
+    } catch (error: unknown) {
+      const parsed = parseContractError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          contractName: 'Pool',
+          functionName: 'bid'
+        }
+      );
+
+      if (parsed.severity === 'warning') {
+        toast.warning(parsed.title);
+      } else {
+        toast.error(parsed.title, {
+          description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+        });
+      }
+    } finally {
+      setIsTxPending(false);
     }
-  }, [writeContract, isConnected, address])
+  }, [executePeeplesApprove, executeBid, isConnected, address])
+
+  const rebalance = useCallback(async () => {
+    setIsTxPending(true);
+    try {
+      if (!isConnected || !address) {
+        throw new Error("Wallet not connected");
+      }
+      await executeRebalance([]);
+      toast.success("Pool rebalanced successfully!");
+    } catch (error: unknown) {
+      const parsed = parseContractError(
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          contractName: 'Pool',
+          functionName: 'rebalance'
+        }
+      );
+
+      if (parsed.severity === 'warning') {
+        toast.warning(parsed.title);
+      } else {
+        toast.error(parsed.title, {
+          description: parsed.action ? `${parsed.message}\n\n💡 ${parsed.action}` : parsed.message
+        });
+      }
+    } finally {
+      setIsTxPending(false);
+    }
+  }, [executeRebalance, isConnected, address]);
 
   const value: PoolContextType = {
     config: config as PoolConfig,
     tvl: tvl as PoolTVL,
     state: state as PoolState,
     shareToken: addresses?.shareToken || "0x",
-    isTxPending: isWriting,
+    isTxPending,
     currentAuction: {
       auctionId: currentAuction && currentAuction[0],
       endTime: currentAuction && currentAuction[1],
@@ -377,7 +442,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
       feeRecipient: currentAuction && currentAuction[4],
       ended: currentAuction && currentAuction[5],
     },
-    minAuctionBid: minAuctionBid || 0n,
+    minAuctionBid: (typeof minAuctionBid === 'object' && minAuctionBid !== null && 0 in minAuctionBid ? (minAuctionBid as readonly [bigint, boolean])[0] : 0n),
     auctionBid: auctionBid,
     deposit,
     claim,
@@ -391,6 +456,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
     vote,
     voteEpoch: voteEpoch as bigint,
     votes: votes as VoteType[],
+    rebalance,
   };
 
   return <PoolContext.Provider value={value}>{children}</PoolContext.Provider>;

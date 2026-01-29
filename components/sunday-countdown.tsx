@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 
-interface SundayCountdownProps {}
+interface SundayCountdownProps {
+  compact?: boolean;
+}
 
-const SundayCountdown:React.FC<SundayCountdownProps> = () => {
+const SundayCountdown: React.FC<SundayCountdownProps> = ({ compact = false }) => {
   const getCountdown = (): string => {
     const now = new Date();
     const dayOfWeek = now.getDay();
@@ -19,6 +21,9 @@ const SundayCountdown:React.FC<SundayCountdownProps> = () => {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
+    if (compact) {
+      return `${days}d ${hours}h`;
+    }
     return `${days}D ${hours}H ${minutes}M`;
   };
 
@@ -30,9 +35,10 @@ const SundayCountdown:React.FC<SundayCountdownProps> = () => {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [compact]);
 
   return <span>{countdown}</span>;
-}
+};
 
 export default SundayCountdown;
+export { SundayCountdown };

@@ -4,7 +4,6 @@ import { useCanBuyGlaze } from "@/hooks/useCanBuyGlaze";
 import { Badge } from "@/components/ui/badge";
 import { usePool } from "@/providers/PoolProvider";
 import { formatUnits } from "viem";
-import { sdk } from "@farcaster/miniapp-sdk";
 
 interface BuyKingGlazerProps {
   onBuy: () => void;

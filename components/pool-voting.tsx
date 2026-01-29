@@ -127,7 +127,7 @@ export function PoolVoting() {
 
             <div className="space-y-1 text-black">
               {voteOptions.map((option) => {
-                const percentage = ((option.votes / votes.length) * 100).toFixed(2); 
+                const percentage = ((option.votes / votes?.length) * 100).toFixed(2); 
                 return (
                   <div
                     key={option.id}

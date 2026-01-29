@@ -1,24 +1,26 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { sdk } from "@farcaster/miniapp-sdk";
 import { NavBar } from "@/components/nav-bar"
+import { PageHeader, type MiniAppContext } from "@/components/page-header"
+import { useFrameContext } from "@/providers/FrameSDKProvider"
 import { usePool } from "@/providers/PoolProvider"
 import { useQuery } from "@tanstack/react-query"
 import { formatUnits, parseUnits, zeroAddress } from "viem"
 import axios from "axios";
-import { CONTRACT_ADDRESSES, ERC20 } from "@/lib/contracts"
+import { CONTRACT_ADDRESSES } from "@/lib/contracts"
+import { ERC20 } from "@/lib/abi/erc20"
 import { useReadContract, useAccount } from "wagmi"
 import { base } from "wagmi/chains";
-import { MiniAppContext } from "../app/page";
 import { toast } from "sonner"
 import { Countdown } from "./countdown"
-
+import { Gavel, Crown, Timer, Coins, Gift, Flame, Wallet, ArrowRight, Trophy } from "lucide-react"
 
 export default function AuctionPage() {
     const [bidAmount, setBidAmount] = useState("")
-    const [context, setContext] = useState<any>(null)
+    const { context: frameContext } = useFrameContext()
+    const context = frameContext as MiniAppContext | null
     const { currentAuction, minAuctionBid, auctionBid, config } = usePool()
 
     const { address } = useAccount();
@@ -41,34 +43,10 @@ export default function AuctionPage() {
         return amount.toLocaleString()
     }
 
-    useEffect(() => {
-        let cancelled = false;
-        const hydrateContext = async () => {
-            try {
-                const ctx = (await (
-                    sdk as unknown as {
-                        context: Promise<MiniAppContext> | MiniAppContext;
-                    }
-                ).context) as MiniAppContext;
-                if (!cancelled) {
-                    setContext(ctx);
-                }
-            } catch {
-                if (!cancelled) setContext(null);
-            }
-        };
-        hydrateContext();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-
     const { data: currentFeeRecipient } = useQuery({
         queryKey: ['currentFeeRecipient', config?.feeRecipient],
         enabled: !!config?.feeRecipient,
         queryFn: async () => {
-            // Replace with actual API call
             const { data: { user } } = await axios.get(`/api/neynar/user?address=${config?.feeRecipient}`);
             return {
                 avatar: user.pfpUrl,
@@ -76,14 +54,13 @@ export default function AuctionPage() {
                 handle: user.username,
             };
         },
-        staleTime: 60000, // 1 minute
+        staleTime: 60000,
     });
 
     const { data: highestBidderData } = useQuery({
         queryKey: ['highestBidder', currentAuction?.highestBidder],
         enabled: !!currentAuction?.highestBidder && currentAuction.highestBidder !== zeroAddress,
         queryFn: async () => {
-            // Replace with actual API call
             const { data: { user } } = await axios.get(`/api/neynar/user?address=${currentAuction?.highestBidder}`);
             return {
                 avatar: user.pfpUrl,
@@ -91,7 +68,7 @@ export default function AuctionPage() {
                 handle: user.username,
             };
         },
-        staleTime: 60000, // 1 minute
+        staleTime: 60000,
     });
 
     const { data: userPeeplesBalance } = useReadContract({
@@ -106,253 +83,253 @@ export default function AuctionPage() {
     const bidValue = Number.parseFloat(bidAmount) || 0
     const isValidBid = bidValue >= parseFloat(formatUnits(minAuctionBid || 0n, 18))
 
-    const userDisplayName = context?.user?.displayName ?? context?.user?.username ?? "Farcaster user"
-    const userHandle = context?.user?.username
-        ? `@${context.user.username}`
-        : context?.user?.fid
-            ? `fid ${context.user.fid}`
-            : ""
-    const userAvatarUrl = context?.user?.pfpUrl ?? null
-
-    const initialsFrom = (label?: string) => {
-        if (!label) return ""
-        const stripped = label.replace(/[^a-zA-Z0-9]/g, "")
-        if (!stripped) return label.slice(0, 2).toUpperCase()
-        return stripped.slice(0, 2).toUpperCase()
-    }
-
     const handleBidSubmit = useCallback(async () => {
         if (!isValidBid) return toast.error("Invalid bid amount");
         if (!feeRecipientAddress || feeRecipientAddress.length !== 42) return toast.error("Invalid fee recipient address");
         try {
             await auctionBid(parseUnits(bidAmount || "0", 18), feeRecipientAddress as `0x${string}`);
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Bid submission failed:", e);
         }
-    }, [auctionBid, feeRecipientAddress, bidAmount]);
+    }, [auctionBid, feeRecipientAddress, bidAmount, isValidBid]);
+
+    const benefits = [
+        {
+            icon: Coins,
+            color: "#FFD700",
+            title: "90% of Protocol Fees",
+            desc: "Earn $DONUT and $WETH from all pool fees for 3 days",
+        },
+        {
+            icon: Timer,
+            color: "#82AD94",
+            title: "3-Day Exclusive Rights",
+            desc: "Rights begin immediately after auction ends",
+        },
+        {
+            icon: Flame,
+            color: "#FFB5BA",
+            title: "Blazery Boost",
+            desc: "Your bid + 10% of fees fuel PEEPLES/DONUT LP burn",
+        },
+    ];
 
     return (
-        <div className="min-h-screen bg-[#FFFDD0] coming-soon">
-            <div className="flex flex-1 flex-col text-black p-3">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold tracking-wide amatic flex items-center justify-center">
-                        <img src="/media/peeples_donuts.png" className="h-[50px] w-[50px]" />
-                        PEEPLES DONUTS
-                    </h1>
-                    {context?.user ? (
-                        <div className="flex items-center gap-2 rounded-full bg-[#FFFFF0] px-2 py-1">
-                            <Avatar className="h-8 w-8 border border-zinc-800">
-                                <AvatarImage src={userAvatarUrl || undefined} alt={userDisplayName} className="object-cover" />
-                                <AvatarFallback className="bg-zinc-800 text-white">{initialsFrom(userDisplayName)}</AvatarFallback>
-                            </Avatar>
-                            <div className="leading-tight text-left">
-                                <div className="text-sm font-bold">{userDisplayName}</div>
-                                {userHandle ? <div className="text-xs text-gray-600">{userHandle}</div> : null}
-                            </div>
-                        </div>
-                    ) : null}
-                </div>
+        <div className="min-h-screen bg-gradient-to-b from-[#FDF6E3] via-[#FAF0DC] to-[#F5E6C8]">
+            {/* Decorative elements */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[8%] left-[6%] w-4 h-4 rounded-full bg-[#F4A627] opacity-25 animate-bounce-in" style={{ animationDelay: '0.1s' }} />
+                <div className="absolute top-[15%] right-[10%] w-3 h-3 rounded-full bg-[#E85A71] opacity-20 animate-bounce-in" style={{ animationDelay: '0.2s' }} />
+                <div className="absolute bottom-[35%] left-[8%] w-2 h-2 rounded-full bg-[#6B9B7A] opacity-25 animate-bounce-in" style={{ animationDelay: '0.3s' }} />
             </div>
 
-            <div className="max-w-2xl mx-auto px-6 pb-36 space-y-6 h-[100vh] overflow-y-scroll hide-scrollbar">
-                <div className="bg-gradient-to-r from-[#5C946E] to-[#4ECDC4] rounded-full px-5 py-2 relative overflow-hidden shadow-sm">
-                    <div className="relative flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                            <Avatar className="h-7 w-7 ring-2 ring-white/40">
+            <div className="flex flex-1 flex-col text-[#3D2914] p-3">
+                <PageHeader
+                    title="FEE AUCTION"
+                    subtitle="Bid for protocol fee rights"
+                    context={context}
+                />
+            </div>
+
+            <div className="max-w-2xl mx-auto px-4 pb-36 space-y-4 h-[calc(100vh-100px)] overflow-y-auto scrollbar-styled">
+                {/* Current Head Baker Banner */}
+                <div className="glazed-card p-3 opacity-0 animate-slide-up">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 ring-2 ring-[#82AD94]/30">
                                 <AvatarImage src={currentFeeRecipient?.avatar || "/placeholder.svg"} />
-                                <AvatarFallback className="text-xs bg-white/20 text-white">
-                                    {currentFeeRecipient?.name[0]}
+                                <AvatarFallback className="text-xs bg-gradient-to-br from-[#82AD94] to-[#5C946E] text-white">
+                                    {currentFeeRecipient?.name?.[0] ?? "?"}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="flex items-center gap-2">
-                                <span className="text-white text-sm font-semibold">{currentFeeRecipient?.name}</span>
-                                <span className="px-2 py-0.5 rounded-full bg-white/25 text-white/90 text-[10px] font-bold uppercase tracking-wider">
-                                    Head Baker
-                                </span>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-[#2D2319]">{currentFeeRecipient?.name ?? "Unknown"}</span>
+                                    <span className="px-2 py-0.5 rounded-full bg-[#82AD94]/20 text-[#5C946E] text-[9px] font-bold uppercase">
+                                        Head Baker
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-[#A89485]">Current fee recipient</span>
                             </div>
                         </div>
-
-                        <Countdown endTime={Number(currentAuction?.endTime || 0) * 1000} className="text-white/80 text-xs font-medium whitespace-nowrap" />
+                        <div className="text-right">
+                            <div className="text-[10px] text-[#A89485]">Time Left</div>
+                            <Countdown endTime={Number(currentAuction?.endTime || 0) * 1000} className="text-sm font-bold text-[#2D2319]" />
+                        </div>
                     </div>
                 </div>
 
-                {/* Current Leader - Prominent Display */}
+                {/* Leading Bid Hero Card */}
                 {isAuctionActive ? (
-                    // State: Auction Ongoing - Show current leader
-                    <div className="bg-gradient-to-br from-[#F4A259] to-[#BC4B51] rounded-2xl p-6 relative overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8" />
+                    <div className="glazed-card p-5 opacity-0 animate-slide-up glow-gold" style={{ animationDelay: '0.05s' }}>
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] p-5">
+                            <div className="absolute top-2 right-4 w-24 h-24 rounded-full bg-white/10 blur-xl" />
+                            <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/5 blur-lg" />
 
-                        <div className="relative space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="px-2.5 py-1 rounded-full bg-white/30 backdrop-blur-sm">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-white">Leading Bid</span>
+                            <div className="relative">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Trophy className="w-5 h-5 text-white" />
+                                        <span className="text-sm font-bold text-white uppercase tracking-wide">Leading Bid</span>
+                                    </div>
+                                    <div className="bg-white/20 rounded-lg px-2 py-1">
+                                        <Countdown endTime={Number(currentAuction?.endTime || 0) * 1000} className="text-xs font-bold text-white" />
+                                    </div>
                                 </div>
-                                <div className="text-sm text-white/90 font-semibold">
-                                    <Countdown endTime={Number(currentAuction?.endTime || 0) * 1000} /> left
+
+                                <div className="flex items-center gap-4 mb-4">
+                                    <Avatar className="h-16 w-16 ring-4 ring-white/30">
+                                        <AvatarImage src={highestBidderData?.avatar || "/placeholder.svg"} />
+                                        <AvatarFallback className="text-xl bg-white/20 text-white">{highestBidderData?.name?.[0] ?? "?"}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <div className="text-xl font-bold text-white">{highestBidderData?.name ?? "Unknown"}</div>
+                                        <div className="text-white/80 text-sm">@{highestBidderData?.handle ?? "unknown"}</div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-14 w-14 ring-4 ring-white/40 flex-shrink-0">
-                                    <AvatarImage src={highestBidderData?.avatar || "/placeholder.svg"} />
-                                    <AvatarFallback className="text-lg">{highestBidderData?.name[0]}</AvatarFallback>
-                                </Avatar>
-
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-white text-base font-bold truncate">{highestBidderData?.name}</div>
-                                    <div className="text-white/80 text-sm truncate">{highestBidderData?.handle}</div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 mt-3">
-                                <div className="flex items-baseline justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-3xl font-bold text-white tabular-nums truncate">
-                                            {formatBidAmount(Number.parseFloat(formatUnits(currentAuction?.highestBid || 0n, 18)))}
-                                        </div>
-                                        <div className="text-xs text-white/70 mt-0.5">{Number.parseFloat(formatUnits(currentAuction?.highestBid || 0n, 18)).toLocaleString()} $PEEPLES</div>
+                                <div className="bg-white/20 rounded-xl p-4">
+                                    <div className="text-4xl font-bold text-white amatic">
+                                        {formatBidAmount(Number.parseFloat(formatUnits(currentAuction?.highestBid || 0n, 18)))}
+                                    </div>
+                                    <div className="text-xs text-white/70">
+                                        {Number.parseFloat(formatUnits(currentAuction?.highestBid || 0n, 18)).toLocaleString()} $PEEPLES
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 ) : (
-                    // State: No Bids Yet - Show open auction invitation
-                    <div className="bg-gradient-to-br from-[#F4A259] to-[#BC4B51] rounded-2xl p-6 relative overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-8 -mt-8" />
+                    <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+                        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FFD700]/80 to-[#FFA500]/80 p-6 text-center">
+                            <div className="absolute top-2 right-4 w-20 h-20 rounded-full bg-white/10 blur-xl" />
 
-                        <div className="relative space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="px-2.5 py-1 rounded-full bg-white/30 backdrop-blur-sm">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-white">Auction Open</span>
+                            <div className="relative">
+                                <div className="w-20 h-20 mx-auto rounded-full bg-white/20 flex items-center justify-center mb-4 ring-4 ring-white/30">
+                                    <span className="text-4xl">🍩</span>
                                 </div>
-                                <Countdown endTime={Number(currentAuction?.endTime || 0) * 1000} className="text-white/80 text-xs font-medium whitespace-nowrap" />
-                            </div>
-
-                            <div className="flex flex-col items-center justify-center py-6 px-4 text-center">
-                                <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4 ring-4 ring-white/30">
-                                    <div className="text-4xl">🍩</div>
-                                </div>
-
-                                <div className="text-white text-2xl font-bold mb-2">No Bids Yet</div>
-                                <div className="text-white/80 text-sm max-w-xs">
+                                <h3 className="text-2xl font-bold text-white amatic mb-2">No Bids Yet</h3>
+                                <p className="text-white/80 text-sm max-w-xs mx-auto">
                                     Be the first to bid and secure exclusive rights to 90% of protocol fees for 3 days
-                                </div>
+                                </p>
                             </div>
                         </div>
                     </div>
                 )}
 
-                <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-[#3D405B]/10 p-7 shadow-sm hover:shadow-md transition-all duration-300">
-                    <div className="space-y-5">
+                {/* Bid Form */}
+                <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                    <div className="space-y-4">
                         <div>
-                            <label className="text-[10px] text-[#3D405B]/60 uppercase tracking-[0.12em] mb-2.5 block font-semibold">
+                            <div className="text-xs font-bold text-[#5C4A3D] uppercase tracking-wider mb-2">
                                 Your Bid
-                            </label>
+                            </div>
                             <div className="relative">
                                 <input
                                     type="text"
                                     value={bidAmount}
                                     onChange={(e) => setBidAmount(e.target.value)}
                                     placeholder="0"
-                                    className="w-full bg-white text-black border-2 border-[#BC4B51]/20 rounded-xl px-5 py-4 text-lg placeholder:text-[#3D405B]/30 focus:outline-none focus:ring-4 focus:border-[#BC4B51] focus:ring-[#BC4B51]/10 transition-all tabular-nums font-semibold"
+                                    className="w-full bg-white/70 text-[#2D2319] border-2 border-transparent rounded-xl px-4 py-4 text-lg font-semibold placeholder:text-[#A89485]/50 focus:outline-none focus:border-[#FFD700] transition-all"
                                 />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#3D405B]/40 font-semibold">
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#A89485] font-semibold">
                                     $PEEPLES
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label className="text-[10px] text-[#3D405B]/60 uppercase tracking-[0.12em] mb-2.5 block font-semibold">
+                            <div className="text-xs font-bold text-[#5C4A3D] uppercase tracking-wider mb-2">
                                 Fee Recipient Address
-                            </label>
+                            </div>
                             <div className="space-y-2">
                                 <input
                                     type="text"
                                     value={feeRecipientAddress}
                                     onChange={(e) => setFeeRecipientAddress(e.target.value)}
                                     placeholder="0x..."
-                                    className="w-full bg-white text-black border-2 border-[#5C946E]/20 rounded-xl px-5 py-3 placeholder:text-[#3D405B]/30 focus:outline-none focus:ring-4 focus:border-[#5C946E] focus:ring-[#5C946E]/10 transition-all font-mono text-xs"
+                                    className="w-full bg-white/70 text-[#2D2319] border-2 border-transparent rounded-xl px-4 py-3 font-mono text-xs placeholder:text-[#A89485]/50 focus:outline-none focus:border-[#82AD94] transition-all"
                                 />
                                 <button
-                                    onClick={() => {
-                                        setFeeRecipientAddress(address || "")
-                                    }}
-                                    className="text-xs text-[#5C946E] hover:text-[#5C946E]/80 font-semibold uppercase tracking-wider transition-colors"
+                                    onClick={() => setFeeRecipientAddress(address || "")}
+                                    className="flex items-center gap-1 text-xs text-[#82AD94] hover:text-[#5C946E] font-semibold transition-colors"
                                 >
+                                    <Wallet className="w-3 h-3" />
                                     Use Connected Wallet ({address?.slice(0, 6)}...{address?.slice(-4)})
                                 </button>
                             </div>
                         </div>
 
-                        <div className="pt-3 space-y-2.5 border-t border-[#3D405B]/5">
+                        <div className="bg-white/30 rounded-xl p-3 space-y-2">
                             <div className="flex justify-between text-sm">
-                                <span className="text-[#3D405B]/50 font-medium">Your Balance</span>
-                                <span className="font-bold text-[#3D405B] tabular-nums">{parseFloat(formatUnits(userPeeplesBalance || 0n, 18)).toLocaleString()} $PEEPLES</span>
+                                <span className="text-[#5C4A3D]">Your Balance</span>
+                                <span className="font-bold text-[#2D2319]">
+                                    {parseFloat(formatUnits(userPeeplesBalance || 0n, 18)).toLocaleString()} $PEEPLES
+                                </span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-[#3D405B]/50 font-medium">Minimum Bid</span>
-                                <span className="font-bold text-[#BC4B51] tabular-nums">{parseFloat(formatUnits(minAuctionBid || 0n, 18)).toLocaleString()} $PEEPLES</span>
+                                <span className="text-[#5C4A3D]">Minimum Bid</span>
+                                <span className="font-bold text-[#FFD700]">
+                                    {parseFloat(formatUnits(minAuctionBid || 0n, 18)).toLocaleString()} $PEEPLES
+                                </span>
                             </div>
                         </div>
 
                         <button
                             onClick={handleBidSubmit}
                             disabled={!isValidBid}
-                            className="w-full bg-[#BC4B51] hover:bg-[#BC4B51]/90 text-white font-bold text-sm tracking-wide h-12 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:bg-[#3D405B]/20 disabled:text-[#3D405B]/40 disabled:shadow-none disabled:cursor-not-allowed"
+                            className="btn-glazed w-full py-3.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{
+                                background: isValidBid
+                                    ? "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)"
+                                    : undefined,
+                            }}
                         >
                             {isAuctionActive
                                 ? isValidBid
-                                    ? "PLACE BID"
+                                    ? <>
+                                        <Gavel className="w-4 h-4 mr-2" />
+                                        PLACE BID
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                      </>
                                     : `Minimum ${parseFloat(formatUnits(minAuctionBid || 0n, 18)).toLocaleString()} $PEEPLES`
                                 : isValidBid
-                                    ? "BE THE FIRST TO BID"
+                                    ? <>
+                                        <Crown className="w-4 h-4 mr-2" />
+                                        BE THE FIRST TO BID
+                                      </>
                                     : "ENTER BID AMOUNT"}
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-[#3D405B]/10 p-7 shadow-sm hover:shadow-md transition-all duration-300">
-                    <h3 className="text-lg font-bold text-[#3D405B] mb-6 tracking-tight">What You Win</h3>
+                {/* Benefits Card */}
+                <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Gift className="w-5 h-5 text-[#FFD700]" />
+                        <h3 className="text-lg font-bold text-[#2D2319]">What You Win</h3>
+                    </div>
 
-                    <div className="space-y-5">
-                        {[
-                            {
-                                num: 1,
-                                color: "#F4A259",
-                                title: "90% of Protocol Fees",
-                                desc: "Earn $DONUT and $WETH from all pool fees generated for 3 consecutive days",
-                            },
-                            {
-                                num: 2,
-                                color: "#5C946E",
-                                title: "3-Day Exclusive Rights",
-                                desc: "Rights begin immediately after auction ends and last exactly three days",
-                            },
-                            {
-                                num: 3,
-                                color: "#BC4B51",
-                                title: "Blazery Boost",
-                                desc: "Your bid + 10% of fees flow into blazery, increasing PEEPLES/DONUT LP burn value for everyone",
-                            },
-                        ].map((benefit) => (
-                            <div key={benefit.num} className="flex gap-4 group">
+                    <div className="space-y-4">
+                        {benefits.map((benefit, index) => (
+                            <div
+                                key={index}
+                                className="flex gap-3 opacity-0 animate-slide-up"
+                                style={{ animationDelay: `${0.2 + index * 0.05}s` }}
+                            >
                                 <div
-                                    className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all group-hover:scale-110 shadow-sm"
-                                    style={{
-                                        backgroundColor: `${benefit.color}15`,
-                                        border: `2px solid ${benefit.color}30`,
-                                        color: benefit.color,
-                                    }}
+                                    className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
+                                    style={{ backgroundColor: `${benefit.color}20` }}
                                 >
-                                    {benefit.num}
+                                    <benefit.icon className="w-5 h-5" style={{ color: benefit.color }} />
                                 </div>
-                                <div className="flex-1 pt-0.5">
-                                    <h4 className="text-sm font-bold text-[#3D405B] mb-1 group-hover:text-[#F4A259] transition-colors">
+                                <div className="flex-1">
+                                    <h4 className="text-sm font-bold text-[#2D2319] mb-0.5">
                                         {benefit.title}
                                     </h4>
-                                    <p className="text-xs text-[#3D405B]/60 leading-relaxed">{benefit.desc}</p>
+                                    <p className="text-xs text-[#5C4A3D] leading-relaxed">
+                                        {benefit.desc}
+                                    </p>
                                 </div>
                             </div>
                         ))}

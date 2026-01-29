@@ -3,12 +3,10 @@ import { Redis } from "@upstash/redis";
 import axios from "axios";
 import setupAdminWallet from "@/lib/setupAdminWallet";
 import { zeroAddress, formatUnits } from "viem";
-import {
-  CONTRACT_ADDRESSES,
-  DATA,
-  MULTICALL_ABI,
-  ERC20,
-} from "@/lib/contracts";
+import { CONTRACT_ADDRESSES } from "@/lib/contracts";
+import { DATA } from "@/lib/abi/data";
+import { MULTICALL_ABI } from "@/lib/abi/multicall";
+import { ERC20 } from "@/lib/abi/erc20";
 import { getBreakevenThreshold } from "@/lib/utils";
 
 const redis = new Redis({
