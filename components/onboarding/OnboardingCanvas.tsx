@@ -171,7 +171,7 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
                           className="object-contain"
                         />
                       </div>
-                      <h2 className="text-2xl font-bold text-white mb-2">
+                      <h2 className="text-2xl font-bold text-black mb-2">
                         Join the Family
                       </h2>
                       <p className="text-white/80 text-sm">

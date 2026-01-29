@@ -872,7 +872,7 @@ export function PinApp({ initialModal = null }: PinAppProps) {
             alt="Peeples Donuts"
             className="w-14 h-14 object-contain drop-shadow-lg"
           />
-          <p className="text-[10px] text-[#FAF0DC]/80 tracking-[0.2em] uppercase mt-1">
+          <p className="text-[10px] text-[#000000]/80 tracking-[0.2em] uppercase mt-1">
             Join the family
           </p>
         </div>
