@@ -36,8 +36,8 @@ export interface UserState {
 }
 
 // Check if pin/flair contracts are deployed
-const PIN_CONTRACT_DEPLOYED = !!CONTRACT_ADDRESSES.pin && CONTRACT_ADDRESSES.pin !== "";
-const FLAIR_CONTRACT_DEPLOYED = !!CONTRACT_ADDRESSES.flair && CONTRACT_ADDRESSES.flair !== "";
+const PIN_CONTRACT_DEPLOYED = !!CONTRACT_ADDRESSES.pin;
+const FLAIR_CONTRACT_DEPLOYED = !!CONTRACT_ADDRESSES.flair; 
 
 export function useUserState(): UserState {
   const { address, isConnected } = useAccount();
