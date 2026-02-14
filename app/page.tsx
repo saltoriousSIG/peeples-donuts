@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import HomeClient from "./home-content";
-const appDomain = process.env.NEXT_PUBLIC_APP_URL || "https://supervictorious-laurel-idyllically.ngrok-free.dev";
+const appDomain = process.env.NEXT_PUBLIC_APP_URL || "https://peeplesdonuts.com";
 const fallbackImage = `${appDomain}/media/peeples_donuts.png`;
 
 export async function generateMetadata({
