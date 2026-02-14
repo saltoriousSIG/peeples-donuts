@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserState } from "@/hooks/useUserState";
@@ -13,12 +13,13 @@ import { usePins } from "@/hooks/usePins";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
 import { usePool } from "@/providers/PoolProvider";
 import { ShareModal, type ShareAction } from "@/components/share-modal";
-import generate_pin from "@/lib/server_functions/generate_pin";
-import { formatUnits } from "viem";
+import { formatUnits, parseEther } from "viem";
+import { useMinerState } from "@/hooks/useMinerState";
+import { useDonutPriceUsd } from "@/hooks/useDonutPriceUsd";
+import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import {
   FLAIR_TOKENS,
   getFlairImagePath,
-  GAUGE_ICONS,
   type FlairTokenData,
   type GaugeName,
 } from "@/lib/flair-data";
@@ -54,28 +55,18 @@ export function PinApp({ initialModal = null }: PinAppProps) {
   const { segment, hasPin, hasShares, hasEquippedFlair } = useUserState();
   const { fUser } = useFrameContext();
   const { equippedFlair } = useFlair();
-  const { pinId } = usePins();
+  const { pinId, pinImageUrl, pinMintPrice, flairMintPrice, refetchPinData } = usePins();
   const { claimableYield, hasClaimableYield, claimYield, isClaiming } = useFlairYield();
   const { isMinting, mintProgress, executeOnboarding, executeFreeMint } = useOnboardingMint();
   const { tvl, shareTokenBalance, shareTokenTotalSupply } = usePool();
+  const { minerState } = useMinerState();
+  const { donutPriceUsd, ethPrice } = useDonutPriceUsd();
 
   // Interaction states
   const [phase, setPhase] = useState<"idle" | "awakening" | "choosing" | "feeding" | "birthing" | "celebrating">("idle");
   const [selectedFlair, setSelectedFlair] = useState<FlairTokenData | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<string>("0.01");
-
-  // Generated pin preview
-  const [generatedPinUrl, setGeneratedPinUrl] = useState<string | null>(null);
-  const [isGeneratingPin, setIsGeneratingPin] = useState(false);
-
-  // TEMP: Load pin from localStorage for testing
-  useEffect(() => {
-    const savedPin = localStorage.getItem("peeples_test_pin");
-    if (savedPin) {
-      setGeneratedPinUrl(savedPin);
-      setJustMinted(true); // Simulate having minted
-    }
-  }, []);
+  const [selectedCurrency, setSelectedCurrency] = useState<"ETH" | "DONUT">("ETH");
 
   // Track if user just minted (for mock mode - overrides hasPin/hasFlair)
   const [justMinted, setJustMinted] = useState(false);
@@ -84,7 +75,15 @@ export function PinApp({ initialModal = null }: PinAppProps) {
   // Share modal
   const [shareOpen, setShareOpen] = useState(false);
   const [shareAction, setShareAction] = useState<ShareAction>("mint-pin");
-  const [shareDetails, setShareDetails] = useState({ message: "", embed: "https://peeplesdonuts.com" });
+  const shareEmbed = `${typeof window !== "undefined" ? window.location.origin : "https://peeplesdonuts.com"}/?fid=${fUser?.fid || ""}`;
+  const [shareDetails, setShareDetails] = useState({ message: "", embed: shareEmbed });
+
+  // If hasPin becomes true mid-onboarding (e.g. data loaded late), reset to idle
+  useEffect(() => {
+    if (hasPin && phase !== "idle" && phase !== "celebrating") {
+      setPhase("idle");
+    }
+  }, [hasPin, phase]);
 
   // Bottom drawer for power features
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -93,24 +92,26 @@ export function PinApp({ initialModal = null }: PinAppProps) {
   const [activeModal, setActiveModal] = useState<ModalType>(initialModal);
 
   // Animation states
-  const [breathePhase, setBreathePhase] = useState(0);
   const [ripples, setRipples] = useState<number[]>([]);
   const donutRef = useRef<HTMLDivElement>(null);
 
-  // Breathing animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBreathePhase((p) => (p + 1) % 360);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
 
 
-  // Calculate total yield
-  const totalYield = useMemo(
-    () => claimableYield?.tokens.reduce((sum, t) => sum + t.formattedAmount, 0) ?? 0,
-    [claimableYield]
-  );
+  // Calculate total claimable yield in USD
+  const totalYieldUsd = useMemo(() => {
+    if (!claimableYield?.tokens.length || !ethPrice) return 0;
+    return claimableYield.tokens.reduce((sum, t) => {
+      const addr = t.address.toLowerCase();
+      if (addr === CONTRACT_ADDRESSES.weth.toLowerCase()) {
+        return sum + t.formattedAmount * ethPrice;
+      }
+      if (addr === CONTRACT_ADDRESSES.donut.toLowerCase()) {
+        return sum + t.formattedAmount * donutPriceUsd;
+      }
+      // Unknown tokens — skip in USD total
+      return sum;
+    }, 0);
+  }, [claimableYield, ethPrice, donutPriceUsd]);
 
   // Calculate yield power from equipped flair (sum of weights)
   const yieldPower = useMemo(() => {
@@ -157,13 +158,13 @@ export function PinApp({ initialModal = null }: PinAppProps) {
       claimYield().then(() => {
         setShareAction("claim-yield");
         setShareDetails({
-          message: `Payday at Peeples! Just collected $${totalYield.toFixed(2)} from my shift 🍩💰`,
-          embed: "https://peeplesdonuts.com",
+          message: `Payday at Peeples! Just collected $${totalYieldUsd.toFixed(2)} from my shift 🍩💰`,
+          embed: shareEmbed,
         });
         setShareOpen(true);
       });
     }
-  }, [hasPin, justMinted, hasClaimableYield, phase, claimYield, totalYield]);
+  }, [hasPin, justMinted, hasClaimableYield, phase, claimYield, totalYieldUsd]);
 
   // Flair selection
   const handleFlairSelect = useCallback((flair: FlairTokenData) => {
@@ -183,45 +184,37 @@ export function PinApp({ initialModal = null }: PinAppProps) {
     setPhase("birthing");
 
     const result = hasShares && !hasPin
-      ? await executeFreeMint()
+      ? await executeFreeMint({
+          flairTokenId: BigInt(selectedFlair.tokenId),
+          currency: selectedCurrency,
+          flairPrice: flairMintPrice ?? 0n,
+        })
       : await executeOnboarding({
           flairTokenId: BigInt(selectedFlair.tokenId),
-          wethAmount: selectedAmount,
+          wethAmount: parseEther(selectedAmount || "0"),
           gauge: selectedFlair.gauge,
+          currency: selectedCurrency,
+          mintPrice: pinMintPrice ?? 0n,
+          flairPrice: flairMintPrice ?? 0n,
         });
 
     if (result?.success) {
       // Mark as minted (for mock mode state tracking)
       setJustMinted(true);
-      // If paid onboarding, they also got flair equipped
-      if (!isFreebie && selectedFlair) {
+      // Both paid and free paths now equip flair
+      if (selectedFlair) {
         setJustEquippedFlair(true);
       }
 
-      // Generate the pin AFTER payment succeeds
-      if (fUser?.fid) {
-        setIsGeneratingPin(true);
-        try {
-          const pinResult = await generate_pin(fUser.fid);
-          setGeneratedPinUrl(pinResult.pinataUrl);
-          // TEMP: Save to localStorage for testing
-          localStorage.setItem("peeples_test_pin", pinResult.pinataUrl);
-        } catch (error) {
-          console.error("Failed to generate pin:", error);
-        } finally {
-          setIsGeneratingPin(false);
-        }
-      }
+      // Refetch pin data so tokenURI + image resolve from onchain
+      await refetchPinData();
 
       setPhase("celebrating");
       // Don't auto-dismiss - let user interact with their new pin
     } else {
       setPhase("idle");
     }
-  }, [selectedFlair, selectedAmount, hasShares, hasPin, executeOnboarding, executeFreeMint, fUser?.fid]);
-
-  // Calculate breathing scale
-  const breatheScale = 1 + Math.sin(breathePhase * 0.0174) * 0.02;
+  }, [selectedFlair, selectedAmount, selectedCurrency, hasShares, hasPin, executeOnboarding, executeFreeMint, refetchPinData, pinMintPrice, flairMintPrice, minerState]);
 
   // Loading state
   if (segment === "loading") {
@@ -294,9 +287,9 @@ export function PinApp({ initialModal = null }: PinAppProps) {
             {/* Glow effect */}
             <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-[#F4A627]/30 to-[#E85A71]/20 blur-2xl" />
             <div className="relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
-              {generatedPinUrl ? (
+              {pinImageUrl ? (
                 <img
-                  src={generatedPinUrl}
+                  src={pinImageUrl}
                   alt="Your Pin"
                   className="w-full h-full object-cover"
                 />
@@ -323,6 +316,7 @@ export function PinApp({ initialModal = null }: PinAppProps) {
           <div className="flex justify-center gap-3 mb-5">
             {[0, 1, 2].map((slotIndex) => {
               const flair = equippedFlair[slotIndex];
+              console.log(flair);
               const isEmpty = !flair;
 
               return (
@@ -339,7 +333,11 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                 >
                   {flair ? (
                     <>
-                      <span className="text-2xl">{GAUGE_ICONS[flair.gauge as GaugeName]}</span>
+                      <img
+                        src={getFlairImagePath(flair.gauge as GaugeName, flair.rarity)}
+                        alt={flair.gauge}
+                        className="w-10 h-10 object-contain"
+                      />
                       <span className="text-[8px] font-bold text-[#8B7355] mt-0.5">
                         {(flair.rarity as string).slice(0, 4)}
                       </span>
@@ -358,7 +356,7 @@ export function PinApp({ initialModal = null }: PinAppProps) {
             {hasClaimableYield && (
               <div className="bg-gradient-to-r from-[#6B9B7A] to-[#5C946E] rounded-2xl p-4 text-center shadow-lg">
                 <p className="text-xs text-white/80 font-medium mb-1">Ready to Claim</p>
-                <p className="text-2xl font-bold text-white">${totalYield.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-white">${totalYieldUsd.toFixed(2)}</p>
               </div>
             )}
 
@@ -387,8 +385,8 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                   claimYield().then(() => {
                     setShareAction("claim-yield");
                     setShareDetails({
-                      message: `Payday at Peeples! Just collected $${totalYield.toFixed(2)} 🍩💰`,
-                      embed: "https://peeplesdonuts.com",
+                      message: `Payday at Peeples! Just collected $${totalYieldUsd.toFixed(2)} 🍩💰`,
+                      embed: shareEmbed,
                     });
                     setShareOpen(true);
                   });
@@ -400,7 +398,7 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                   isClaiming && "opacity-70"
                 )}
               >
-                {isClaiming ? "Claiming..." : `Claim $${totalYield.toFixed(2)}`}
+                {isClaiming ? "Claiming..." : `Claim $${totalYieldUsd.toFixed(2)}`}
               </button>
             ) : (
               <button
@@ -408,7 +406,7 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                   setShareAction("mint-pin");
                   setShareDetails({
                     message: `I'm part of the Peeples Donuts team! 🍩`,
-                    embed: generatedPinUrl || "https://peeplesdonuts.com",
+                    embed: shareEmbed,
                   });
                   setShareOpen(true);
                 }}
@@ -589,9 +587,9 @@ export function PinApp({ initialModal = null }: PinAppProps) {
           className={cn(
             "relative cursor-pointer transition-transform duration-300",
             phase === "awakening" && "animate-pulse scale-110",
-            phase === "celebrating" && "scale-125"
+            phase === "celebrating" && "scale-125",
+            phase === "idle" && "animate-breathe"
           )}
-          style={{ transform: `scale(${breatheScale})` }}
           onClick={handleDonutTap}
         >
           {/* Ripple effects */}
@@ -638,9 +636,11 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                     alt=""
                     className="w-16 h-16 object-contain opacity-50 mb-1"
                   />
-                  <span className="text-xs text-[#8B7355] font-medium">
-                    {phase === "idle" ? "tap to join" : phase === "choosing" ? "pick your role" : "..."}
-                  </span>
+                  {phase === "idle" && (
+                    <span className="text-xs text-[#8B7355] font-medium">
+                      tap to join
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -649,10 +649,10 @@ export function PinApp({ initialModal = null }: PinAppProps) {
       </div>
 
       {/* Contextual UI - appears based on phase */}
-      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center pb-12 px-6">
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center pb-12 px-6 z-10">
         {/* Role selection during awakening */}
         {phase === "choosing" && (
-          <div className="w-full max-w-md animate-slideUp">
+          <div className="w-full max-w-md animate-slideUp bg-[#FDF6E3] pt-5 pb-4 px-5 rounded-3xl shadow-xl border border-[#E8DCC8]">
             <p className="text-center text-[#3D2914] font-bold text-lg mb-1">
               Pick your role
             </p>
@@ -698,29 +698,144 @@ export function PinApp({ initialModal = null }: PinAppProps) {
 
         {/* Deposit selection - your starting investment */}
         {phase === "feeding" && !isFreebie && (
-          <div className="w-full max-w-sm animate-slideUp">
+          <div className="w-full max-w-sm animate-slideUp bg-[#FDF6E3] pt-5 pb-2 px-5 rounded-3xl shadow-xl border border-[#E8DCC8]">
             <p className="text-center text-[#3D2914] font-bold text-lg mb-1">
               {selectedFlair ? `Join as ${ROLE_INFO[selectedFlair.gauge].title}` : "Make your deposit"}
             </p>
-            <p className="text-center text-[#8B7355] text-sm mb-4">
-              Every Peeples employee invests in the shop
+            <p className="text-center text-[#8B7355] text-sm mb-3">
+              Your deposit gets you a Pin + Flair in one transaction
             </p>
-            <div className="flex justify-center gap-2 mb-6">
-              {["0.005", "0.01", "0.025", "0.05"].map((amt) => (
-                <button
-                  key={amt}
-                  onClick={() => handleAmountSelect(amt)}
-                  className={cn(
-                    "px-4 py-2 rounded-full font-bold transition-all",
-                    selectedAmount === amt
-                      ? "bg-[#D4915D] text-white shadow-lg scale-105"
-                      : "bg-white/70 text-[#5C4A3D] hover:bg-white"
-                  )}
-                >
-                  {amt}Ξ
-                </button>
-              ))}
+
+            {/* What you get breakdown */}
+            <div className="flex justify-center gap-3 mb-4">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-full">
+                <span className="text-sm">🎫</span>
+                <span className="text-xs font-medium text-[#5C4A3D]">Pin</span>
+              </div>
+              <span className="text-[#8B7355] text-lg">+</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-full">
+                {selectedFlair && (
+                  <img
+                    src={getFlairImagePath(selectedFlair.gauge, "Bronze")}
+                    alt=""
+                    className="w-4 h-4 object-contain"
+                  />
+                )}
+                <span className="text-xs font-medium text-[#5C4A3D]">
+                  {selectedFlair ? ROLE_INFO[selectedFlair.gauge].title : "Flair"}
+                </span>
+              </div>
             </div>
+
+            {/* Currency toggle */}
+            <div className="flex justify-center gap-2 mb-4">
+              <button
+                onClick={() => {
+                  setSelectedCurrency("ETH");
+                  const mintEth = pinMintPrice ? parseFloat(formatUnits(pinMintPrice, 18)) : 0;
+                  setSelectedAmount(mintEth.toFixed(4));
+                }}
+                className={cn(
+                  "px-5 py-2 rounded-full font-bold text-sm transition-all",
+                  selectedCurrency === "ETH"
+                    ? "bg-[#627EEA] text-white shadow-md"
+                    : "bg-white/50 text-[#5C4A3D] hover:bg-white/70"
+                )}
+              >
+                ETH
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedCurrency("DONUT");
+                  const mintEth = pinMintPrice ? parseFloat(formatUnits(pinMintPrice, 18)) : 0;
+                  setSelectedAmount(mintEth.toFixed(4));
+                }}
+                className={cn(
+                  "px-5 py-2 rounded-full font-bold text-sm transition-all",
+                  selectedCurrency === "DONUT"
+                    ? "bg-[#D4915D] text-white shadow-md"
+                    : "bg-white/50 text-[#5C4A3D] hover:bg-white/70"
+                )}
+              >
+                DONUT
+              </button>
+            </div>
+
+            {/* Amount presets — values always in ETH, display converts to DONUT */}
+            <div className="flex justify-center gap-2 mb-4">
+              {(() => {
+                const mintEth = pinMintPrice ? parseFloat(formatUnits(pinMintPrice, 18)) : 0;
+                const donutPriceEth = minerState?.donutPrice ? parseFloat(formatUnits(minerState.donutPrice, 18)) : 0;
+                const isDonut = selectedCurrency === "DONUT" && donutPriceEth > 0;
+                const ethPresets = [mintEth, mintEth * 2.5, mintEth * 5, mintEth * 10].map(v => v.toFixed(4));
+
+                return ethPresets.map((ethAmt) => {
+                  const label = isDonut
+                    ? Math.ceil(parseFloat(ethAmt) / donutPriceEth).toLocaleString()
+                    : `${parseFloat(ethAmt)}Ξ`;
+                  return (
+                    <button
+                      key={ethAmt}
+                      onClick={() => handleAmountSelect(ethAmt)}
+                      className={cn(
+                        "px-3 py-2 rounded-full font-bold text-sm transition-all",
+                        selectedAmount === ethAmt
+                          ? "bg-[#D4915D] text-white shadow-lg scale-105"
+                          : "bg-white/70 text-[#5C4A3D] hover:bg-white"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Cost breakdown — selectedAmount is always ETH, display converts to DONUT */}
+            <div className="bg-[#F5E6C8]/50 rounded-xl p-3 mb-4">
+              {(() => {
+                const totalEth = parseFloat(selectedAmount || "0");
+                const mintEth = pinMintPrice ? parseFloat(formatUnits(pinMintPrice, 18)) : 0;
+                const flairEth = flairMintPrice ? parseFloat(formatUnits(flairMintPrice, 18)) : 0;
+                const donutPriceEth = minerState?.donutPrice ? parseFloat(formatUnits(minerState.donutPrice, 18)) : 0;
+                const isDonut = selectedCurrency === "DONUT" && donutPriceEth > 0;
+
+                const toDisplay = (ethVal: number) => isDonut ? Math.ceil(ethVal / donutPriceEth) : ethVal;
+                const pinCost = toDisplay(mintEth);
+                const flairCost = toDisplay(flairEth);
+                const deposit = toDisplay(Math.max(0, totalEth - mintEth));
+                const grandTotal = toDisplay(totalEth + flairEth);
+                const unit = isDonut ? "DONUT" : "ETH";
+                const fmt = (v: number) => isDonut ? v.toLocaleString() : v.toFixed(4);
+
+                return (
+                  <>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-[#8B7355]">Pin mint</span>
+                      <span className="text-[#5C4A3D] font-medium">{fmt(pinCost)} {unit}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-[#8B7355]">Extra deposit</span>
+                      <span className="text-[#5C4A3D] font-medium">{fmt(deposit)} {unit}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-[#8B7355]">Bronze Flair</span>
+                      <span className="text-[#5C4A3D] font-medium">{fmt(flairCost)} {unit}</span>
+                    </div>
+                    <div className="border-t border-[#D4C4A8] pt-1.5 flex justify-between text-xs">
+                      <span className="text-[#5C4A3D] font-bold">Total</span>
+                      <span className="text-[#3D2914] font-bold">{fmt(grandTotal)} {unit}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Pool shares note */}
+            <p className="text-center text-[#8B7355] text-[10px] mb-3 px-2">
+              Deposit more than the minimum to earn more pool shares!
+            </p>
+
             <button
               onClick={handleBirth}
               disabled={isMinting}
@@ -731,38 +846,108 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                 isMinting && "opacity-70"
               )}
             >
-              {isMinting ? `Minting... ${mintProgress}%` : "Mint & Join 🍩"}
+              {isMinting ? `Minting... ${mintProgress}%` : "Get Pin + Flair"}
             </button>
           </div>
         )}
 
-        {/* Free mint flow - returning shareholder */}
+        {/* Free mint flow - returning shareholder (free pin + paid flair) */}
         {phase === "feeding" && isFreebie && (
-          <div className="w-full max-w-sm animate-slideUp">
+          <div className="w-full max-w-sm animate-slideUp bg-[#FDF6E3] pt-5 pb-2 px-5 rounded-3xl shadow-xl border border-[#E8DCC8]">
             <p className="text-center text-[#3D2914] font-bold text-lg mb-1">
               Welcome back, fam!
             </p>
-            <p className="text-center text-[#8B7355] text-sm mb-4">
-              {selectedFlair ? `Claim your ${ROLE_INFO[selectedFlair.gauge].title} pin - it's on the house` : "Claim your employee pin - it's on the house"}
+            <p className="text-center text-[#8B7355] text-sm mb-3">
+              {selectedFlair ? `Free pin + ${ROLE_INFO[selectedFlair.gauge].title} flair in one go` : "Claim your employee pin"}
             </p>
+
+            {/* What you get */}
+            <div className="flex justify-center gap-3 mb-4">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#6B9B7A]/10 rounded-full">
+                <span className="text-sm">🎫</span>
+                <span className="text-xs font-medium text-[#5C4A3D]">Free Pin</span>
+              </div>
+              <span className="text-[#8B7355] text-lg">+</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/60 rounded-full">
+                {selectedFlair && (
+                  <img
+                    src={getFlairImagePath(selectedFlair.gauge, "Bronze")}
+                    alt=""
+                    className="w-4 h-4 object-contain"
+                  />
+                )}
+                <span className="text-xs font-medium text-[#5C4A3D]">
+                  {selectedFlair ? ROLE_INFO[selectedFlair.gauge].title : "Flair"}
+                </span>
+              </div>
+            </div>
+
+            {/* Currency toggle */}
+            <div className="flex justify-center gap-2 mb-4">
+              <button
+                onClick={() => setSelectedCurrency("ETH")}
+                className={cn(
+                  "px-5 py-2 rounded-full font-bold text-sm transition-all",
+                  selectedCurrency === "ETH"
+                    ? "bg-[#627EEA] text-white shadow-md"
+                    : "bg-white/50 text-[#5C4A3D] hover:bg-white/70"
+                )}
+              >
+                ETH
+              </button>
+              <button
+                onClick={() => setSelectedCurrency("DONUT")}
+                className={cn(
+                  "px-5 py-2 rounded-full font-bold text-sm transition-all",
+                  selectedCurrency === "DONUT"
+                    ? "bg-[#D4915D] text-white shadow-md"
+                    : "bg-white/50 text-[#5C4A3D] hover:bg-white/70"
+                )}
+              >
+                DONUT
+              </button>
+            </div>
+
+            {/* Cost breakdown — display converts to DONUT */}
+            <div className="bg-[#F5E6C8]/50 rounded-xl p-3 mb-4">
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-[#8B7355]">Peeples Pin</span>
+                <span className="text-[#6B9B7A] font-bold">FREE</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-[#8B7355]">Bronze Flair</span>
+                <span className="text-[#5C4A3D] font-medium">
+                  {(() => {
+                    if (!flairMintPrice) return "...";
+                    const flairEth = parseFloat(formatUnits(flairMintPrice, 18));
+                    const donutPriceEth = minerState?.donutPrice ? parseFloat(formatUnits(minerState.donutPrice, 18)) : 0;
+                    if (selectedCurrency === "DONUT" && donutPriceEth > 0) {
+                      return `${Math.ceil(flairEth / donutPriceEth).toLocaleString()} DONUT`;
+                    }
+                    return `${flairEth} WETH`;
+                  })()}
+                </span>
+              </div>
+            </div>
+
             <button
               onClick={handleBirth}
-              disabled={isMinting}
+              disabled={isMinting || !flairMintPrice}
               className={cn(
                 "w-full py-4 rounded-full font-bold text-lg text-white transition-all",
                 "bg-gradient-to-r from-[#6B9B7A] to-[#5C946E] shadow-xl",
                 "hover:scale-[1.02] active:scale-[0.98]",
-                isMinting && "opacity-70"
+                (isMinting || !flairMintPrice) && "opacity-70"
               )}
             >
-              {isMinting ? `Minting... ${mintProgress}%` : "Claim Free Pin 🍩"}
+              {isMinting ? `Minting... ${mintProgress}%` : "Get Pin + Flair"}
             </button>
           </div>
         )}
 
         {/* Minting progress */}
         {phase === "birthing" && (
-          <div className="text-center animate-pulse">
+          <div className="text-center animate-pulse bg-[#FDF6E3] pt-5 pb-6 px-5 rounded-3xl shadow-xl border border-[#E8DCC8]">
             <p className="text-lg text-[#3D2914] font-bold">
               Minting your Peeples Pin...
             </p>
@@ -788,14 +973,10 @@ export function PinApp({ initialModal = null }: PinAppProps) {
 
             {/* BIG PIN DISPLAY */}
             <div className="relative mb-6">
-              {isGeneratingPin ? (
-                <div className="w-64 h-64 rounded-3xl bg-[#FAF0DC]/10 flex items-center justify-center">
-                  <div className="w-16 h-16 border-4 border-[#FAF0DC]/30 border-t-[#E85A71] rounded-full animate-spin" />
-                </div>
-              ) : generatedPinUrl ? (
+              {pinImageUrl ? (
                 <div className="relative">
                   <img
-                    src={generatedPinUrl}
+                    src={pinImageUrl}
                     alt="Your Peeples Pin"
                     className="w-64 h-64 rounded-3xl shadow-2xl object-cover border-4 border-[#FAF0DC]/20"
                   />
@@ -803,8 +984,8 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                   <div className="absolute -inset-4 rounded-3xl bg-[#F4A627]/20 blur-xl -z-10" />
                 </div>
               ) : (
-                <div className="w-64 h-64 rounded-3xl bg-gradient-to-br from-[#F4A627] to-[#E85A71] flex items-center justify-center shadow-2xl">
-                  <span className="text-6xl">🍩</span>
+                <div className="w-64 h-64 rounded-3xl bg-[#FAF0DC]/10 flex items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-[#FAF0DC]/30 border-t-[#E85A71] rounded-full animate-spin" />
                 </div>
               )}
             </div>
@@ -830,7 +1011,7 @@ export function PinApp({ initialModal = null }: PinAppProps) {
                   setShareAction("mint-pin");
                   setShareDetails({
                     message: `Just got hired at Peeples Donuts as a ${selectedFlair ? ROLE_INFO[selectedFlair.gauge].title : "team member"}! 🍩`,
-                    embed: generatedPinUrl || "https://peeplesdonuts.com",
+                    embed: shareEmbed,
                   });
                   setShareOpen(true);
                 }}
@@ -900,9 +1081,14 @@ export function PinApp({ initialModal = null }: PinAppProps) {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes breathe {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.02); }
+        }
         .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
         .animate-slideUp { animation: slideUp 0.5s ease-out forwards; }
         .animate-spin-slow { animation: spin-slow 1.5s linear infinite; }
+        .animate-breathe { animation: breathe 3.6s ease-in-out infinite; }
       `}</style>
     </div>
   );

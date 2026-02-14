@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
         pfpUrl: user.pfp_url ?? null,
       },
     });
-  } catch (error) {
-    console.error("[neynar:user] Error fetching user:", error);
+  } catch (error: any) {
+    console.error("[neynar:user] Error fetching user:", error.response);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {

@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
     const peeplesToken = data.find(
       (token: any) => token.id === PEEPLES_TOKEN_ID
     );
-    console.log(peeplesToken);
     return NextResponse.json({
       success: true,
       peeples_price: peeplesToken.priceUsd || 0,

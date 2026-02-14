@@ -7,7 +7,6 @@ import {
   type GaugeName,
   type FlairTokenData,
   getFlairImagePath,
-  GAUGE_ICONS,
 } from "@/lib/flair-data";
 
 interface FlairPickerProps {
@@ -66,9 +65,6 @@ export function FlairPicker({ onSelect, selectedFlair, disabled }: FlairPickerPr
                   className="object-contain"
                 />
               </div>
-
-              {/* Icon */}
-              <span className="text-lg">{GAUGE_ICONS[flair.gauge]}</span>
 
               {/* Gauge name */}
               <span className="text-[9px] font-semibold text-[#5C4A3D] text-center leading-tight mt-1">

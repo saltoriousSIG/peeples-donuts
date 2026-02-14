@@ -10,12 +10,6 @@ import { zeroAddress, formatUnits } from "viem";
 import { parseContractError } from "@/lib/errors";
 import useContract, { ExecutionType } from "./useContract";
 
-// Enable mock mode for UI testing without actual transactions
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_TRANSACTIONS === "true";
-
-// Helper to simulate async delay
-const mockDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Known token configurations
 const KNOWN_TOKENS: Record<string, { symbol: string; name: string; decimals: number }> = {
   [CONTRACT_ADDRESSES.weth.toLowerCase()]: { symbol: "WETH", name: "Wrapped Ether", decimals: 18 },
@@ -45,33 +39,9 @@ export interface UseFlairYieldReturn {
   claimYield: () => Promise<void>;
 }
 
-// Mock data for testing
-const MOCK_CLAIMABLE_YIELD: ClaimableYield = {
-  tokens: [
-    {
-      address: CONTRACT_ADDRESSES.weth as `0x${string}`,
-      symbol: "WETH",
-      name: "Wrapped Ether",
-      decimals: 18,
-      amount: 1500000000000000n, // 0.0015 WETH
-      formattedAmount: 0.0015,
-    },
-    {
-      address: CONTRACT_ADDRESSES.donut as `0x${string}`,
-      symbol: "DONUT",
-      name: "Donut",
-      decimals: 18,
-      amount: 25000000000000000000n, // 25 DONUT
-      formattedAmount: 25,
-    },
-  ],
-  totalCount: 2,
-};
-
 export function useFlairYield(): UseFlairYieldReturn {
   const { address, isConnected } = useAccount();
   const [isClaiming, setIsClaiming] = useState(false);
-  const [mockYieldClaimed, setMockYieldClaimed] = useState(false);
 
   // Get claimable yield from contract
   const { data: claimableData, fetchStatus: claimableFetchStatus } = useReadContract({
@@ -81,7 +51,7 @@ export function useFlairYield(): UseFlairYieldReturn {
     args: [address ?? zeroAddress],
     chainId: base.id,
     query: {
-      enabled: !!address && !!CONTRACT_ADDRESSES.pool && !MOCK_MODE,
+      enabled: !!address && !!CONTRACT_ADDRESSES.pool,
       refetchInterval: 15_000,
     },
   });
@@ -91,14 +61,6 @@ export function useFlairYield(): UseFlairYieldReturn {
 
   // Parse claimable yield data
   const claimableYield = useMemo((): ClaimableYield | null => {
-    // In mock mode, return mock data unless already claimed
-    if (MOCK_MODE) {
-      if (mockYieldClaimed) {
-        return { tokens: [], totalCount: 0 };
-      }
-      return MOCK_CLAIMABLE_YIELD;
-    }
-
     if (!CONTRACT_ADDRESSES.pool) {
       return null;
     }
@@ -138,7 +100,7 @@ export function useFlairYield(): UseFlairYieldReturn {
     } catch {
       return null;
     }
-  }, [claimableData, mockYieldClaimed]);
+  }, [claimableData]);
 
   // Check if there's any claimable yield
   const hasClaimableYield = useMemo(() => {
@@ -146,34 +108,7 @@ export function useFlairYield(): UseFlairYieldReturn {
     return claimableYield.totalCount > 0;
   }, [claimableYield]);
 
-  // Mock claim implementation
-  const executeMockClaim = useCallback(async () => {
-    console.log("[MOCK] Claiming yield...");
-    setIsClaiming(true);
-
-    try {
-      toast.info("[MOCK] Claiming yield...");
-      await mockDelay(1500);
-      setMockYieldClaimed(true);
-      toast.success("[MOCK] Yield claimed successfully!");
-
-      // Reset mock yield after a delay (simulate new yield accumulation)
-      setTimeout(() => {
-        setMockYieldClaimed(false);
-      }, 10000);
-    } catch (error) {
-      toast.error("[MOCK] Error claiming yield");
-    } finally {
-      setIsClaiming(false);
-    }
-  }, []);
-
   const claimYield = useCallback(async () => {
-    // Use mock mode if enabled
-    if (MOCK_MODE) {
-      return executeMockClaim();
-    }
-
     if (!isConnected || !address) {
       toast.error("Wallet not connected");
       return;
@@ -212,12 +147,12 @@ export function useFlairYield(): UseFlairYieldReturn {
     } finally {
       setIsClaiming(false);
     }
-  }, [address, isConnected, hasClaimableYield, executeClaimYield, executeMockClaim]);
+  }, [address, isConnected, hasClaimableYield, executeClaimYield]);
 
   return {
     claimableYield,
     hasClaimableYield,
-    isLoading: !MOCK_MODE && claimableFetchStatus === "fetching" && !claimableData,
+    isLoading: claimableFetchStatus === "fetching" && !claimableData,
     isClaiming,
     claimYield,
   };

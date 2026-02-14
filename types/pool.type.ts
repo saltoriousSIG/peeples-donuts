@@ -32,22 +32,21 @@ export type PendingClaim = {
 }
 
 export type PoolConfig = {
-  duration: bigint;
-  feeRecipient: `0x${string}`;
+  minDeposit: bigint;
+  deadline: bigint;
   maxPriceBps: bigint;
   messagePrice: bigint;
-  minDeposit: bigint;
-  minPoolSize: bigint;
+  feeRecipient: `0x${string}`;
   reward: {
     peeplesReward: bigint;
     peeplesToken: `0x${string}`;
   };
-  strategy: number;
   vote: {
     holdingsRequirement: bigint;
     epochTimestamp: bigint;
     epochDuration: bigint;
   };
+  strategy: number;
 };
 
 export type PoolState = {

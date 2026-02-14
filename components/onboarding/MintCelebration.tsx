@@ -19,8 +19,9 @@ export function MintCelebration({
   onShare,
   onContinue,
 }: MintCelebrationProps) {
-  const { sdk } = useFrameContext();
+  const { sdk, fUser } = useFrameContext();
   const [showContent, setShowContent] = useState(false);
+  const shareEmbed = `${typeof window !== "undefined" ? window.location.origin : "https://peeplesdonuts.com"}/?fid=${fUser?.fid || ""}`;
 
   useEffect(() => {
     if (isVisible) {
@@ -44,7 +45,7 @@ export function MintCelebration({
   const handleShare = () => {
     sdk.actions.composeCast({
       text: "I just joined the Peeples Donuts family! Come get glazed with us!",
-      embeds: ["https://peeplesdonuts.com"],
+      embeds: [shareEmbed],
     });
     onShare();
   };

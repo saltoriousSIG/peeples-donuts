@@ -1,8 +1,7 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Strategy } from "@/types/pool.type";
-import { usePool } from "@/providers/PoolProvider";
+import { Strategy, Vote as VoteType, PoolConfig } from "@/types/pool.type";
 import { STRATEGY_MINUTES_BREAKEVEN } from "@/lib/utils";
 import { STRATEGY_NAME_MAPPING } from "@/types/pool.type";
 import SundayCountdown from "./sunday-countdown";
@@ -16,11 +15,23 @@ interface VoteOptionData {
   votes: number;
 }
 
-export function PoolVoting() {
+interface PoolVotingProps {
+  vote: (strategy: Strategy) => Promise<void>;
+  voteEpoch: bigint;
+  votes: VoteType[];
+  hasUserVoted?: boolean;
+  config: PoolConfig;
+}
+
+export const PoolVoting = React.memo(function PoolVoting({
+  vote,
+  voteEpoch,
+  votes,
+  hasUserVoted,
+  config,
+}: PoolVotingProps) {
   const [selectedVote, setSelectedVote] = useState<Strategy | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
-
-  const { vote, voteEpoch, votes, hasUserVoted, config } = usePool();
 
   useEffect(() => {
     setHasVoted(hasUserVoted ?? false);
@@ -100,7 +111,7 @@ export function PoolVoting() {
           </div>
           <div className="px-2 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
             <span className="text-[9px] font-semibold text-gray-100 tracking-wider">
-              <SundayCountdown /> 
+              <SundayCountdown />
             </span>
           </div>
         </div>
@@ -127,7 +138,7 @@ export function PoolVoting() {
 
             <div className="space-y-1 text-black">
               {voteOptions.map((option) => {
-                const percentage = ((option.votes / votes?.length) * 100).toFixed(2); 
+                const percentage = ((option.votes / votes?.length) * 100).toFixed(2);
                 return (
                   <div
                     key={option.id}
@@ -210,4 +221,4 @@ export function PoolVoting() {
       </div>
     </div>
   );
-}
+});

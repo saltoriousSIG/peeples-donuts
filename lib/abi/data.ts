@@ -151,12 +151,7 @@ export const DATA = [
           },
           {
             internalType: "uint256",
-            name: "minPoolSize",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "duration",
+            name: "deadline",
             type: "uint256",
           },
           {
@@ -479,7 +474,12 @@ export const DATA = [
           },
           {
             internalType: "string",
-            name: "metadataURI",
+            name: "uri",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "compositeImageURI",
             type: "string",
           },
           {

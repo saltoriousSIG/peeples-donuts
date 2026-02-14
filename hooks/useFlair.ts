@@ -1,7 +1,8 @@
 "use client";
 
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { base } from "wagmi/chains";
+import { waitForTransactionReceipt } from "@wagmi/core";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { FLAIR_ABI } from "@/lib/abi/flair";
 import { DATA } from "@/lib/abi/data";
@@ -10,13 +11,9 @@ import { toast } from "sonner";
 import { zeroAddress } from "viem";
 import { type Rarity, type GaugeName, getTokenById, FLAIR_TOKENS } from "@/lib/flair-data";
 import { parseContractError } from "@/lib/errors";
+import { ensureTokenApproval, getPaymentTokenAddress } from "@/lib/token-utils";
+import { wagmiConfig } from "@/lib/wagmi";
 import useContract, { ExecutionType } from "./useContract";
-
-// Enable mock mode for UI testing without actual transactions
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_TRANSACTIONS === "true";
-
-// Mock user state to match
-const MOCK_USER_SEGMENT = process.env.NEXT_PUBLIC_MOCK_USER_SEGMENT || "new_user";
 
 export interface FlairItem {
   id: string;
@@ -26,6 +23,7 @@ export interface FlairItem {
   weight: number;
   poolFeeDiscount: number;
   isEquipped: boolean;
+  balance: bigint; // wallet balance from balanceOfBatch (excludes equipped copy held by pool)
 }
 
 export interface UseFlairReturn {
@@ -36,56 +34,14 @@ export interface UseFlairReturn {
   isBuying: boolean;
   isEquipping: boolean;
   isFusing: boolean;
-  buyFlair: (flairTypeId: bigint, price: bigint) => Promise<void>;
+  buyFlair: (flairTypeId: bigint, price: bigint, useDonut?: boolean) => Promise<void>;
   equipFlair: (flairId: bigint, cid: string) => Promise<void>;
   unequipFlair: (flairId: bigint, cid: string) => Promise<void>;
-  fuseFlair: (flairId: bigint) => Promise<void>;
+  fuseFlair: (flairId: bigint, fusionCost: bigint) => Promise<void>;
 }
 
 // All known token IDs (1-20)
 const ALL_TOKEN_IDS = FLAIR_TOKENS.map(t => BigInt(t.tokenId));
-
-// Mock flair data based on user segment
-function getMockFlairData(): { ownedFlair: FlairItem[]; equippedFlair: (FlairItem | null)[] } {
-  if (MOCK_USER_SEGMENT === "yield_ready" || MOCK_USER_SEGMENT === "active_earner") {
-    // User with equipped flair
-    const donutFlair: FlairItem = {
-      id: "1",
-      tokenId: 1n,
-      gauge: "Donut",
-      rarity: "Bronze",
-      weight: 1,
-      poolFeeDiscount: 20,
-      isEquipped: true,
-    };
-    const lpFlair: FlairItem = {
-      id: "2",
-      tokenId: 9n,
-      gauge: "Donut wETH LP",
-      rarity: "Bronze",
-      weight: 1,
-      poolFeeDiscount: 20,
-      isEquipped: MOCK_USER_SEGMENT === "yield_ready",
-    };
-
-    if (MOCK_USER_SEGMENT === "yield_ready") {
-      return {
-        ownedFlair: [donutFlair, lpFlair],
-        equippedFlair: [donutFlair, lpFlair, null],
-      };
-    }
-    return {
-      ownedFlair: [donutFlair],
-      equippedFlair: [donutFlair, null, null],
-    };
-  }
-
-  // No flair for other states
-  return {
-    ownedFlair: [],
-    equippedFlair: [null, null, null],
-  };
-}
 
 export function useFlair(): UseFlairReturn {
   const { address, isConnected } = useAccount();
@@ -93,46 +49,46 @@ export function useFlair(): UseFlairReturn {
   const [isEquipping, setIsEquipping] = useState(false);
   const [isFusing, setIsFusing] = useState(false);
 
-  // Get user's flair balances for all known token IDs using balanceOfBatch
-  const { data: flairBalances, fetchStatus: flairFetchStatus } = useReadContract({
-    address: CONTRACT_ADDRESSES.flair as `0x${string}`,
-    abi: FLAIR_ABI,
-    functionName: "balanceOfBatch",
-    args: [
-      ALL_TOKEN_IDS.map(() => address ?? zeroAddress), // Array of user addresses (same address repeated)
-      ALL_TOKEN_IDS, // Array of token IDs
+  // Batch all flair reads into a single multicall
+  const { data: flairBatch, fetchStatus, refetch: refetchFlairBatch } = useReadContracts({
+    contracts: [
+      // [0] balanceOfBatch - user's flair balances for all token IDs
+      {
+        address: CONTRACT_ADDRESSES.flair as `0x${string}`,
+        abi: FLAIR_ABI,
+        functionName: "balanceOfBatch",
+        args: [
+          ALL_TOKEN_IDS.map(() => address ?? zeroAddress),
+          ALL_TOKEN_IDS,
+        ],
+        chainId: base.id,
+      },
+      // [1] getUserEquippedFlair - equipped flair IDs from Data facet
+      {
+        address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+        abi: DATA,
+        functionName: "getUserEquippedFlair",
+        args: [address ?? zeroAddress],
+        chainId: base.id,
+      },
+      // [2] isApprovedForAll - check if pool can transfer user's flair
+      {
+        address: CONTRACT_ADDRESSES.flair as `0x${string}`,
+        abi: FLAIR_ABI,
+        functionName: "isApprovedForAll",
+        args: [address ?? zeroAddress, CONTRACT_ADDRESSES.pool as `0x${string}`],
+        chainId: base.id,
+      },
     ],
-    chainId: base.id,
-    query: {
-      enabled: !!address && !!CONTRACT_ADDRESSES.flair,
-      refetchInterval: 10_000,
-    },
-  });
-
-  // Get equipped flair IDs from Data facet
-  const { data: equippedFlairIds, fetchStatus: equippedFetchStatus } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: DATA,
-    functionName: "getUserEquippedFlair",
-    args: [address ?? zeroAddress],
-    chainId: base.id,
-    query: {
-      enabled: !!address && !!CONTRACT_ADDRESSES.pool,
-      refetchInterval: 10_000,
-    },
-  });
-
-  // Check if PinsAndFlair contract is approved to transfer user's flair
-  const { data: isApproved, refetch: refetchApproval } = useReadContract({
-    address: CONTRACT_ADDRESSES.flair as `0x${string}`,
-    abi: FLAIR_ABI,
-    functionName: "isApprovedForAll",
-    args: [address ?? zeroAddress, CONTRACT_ADDRESSES.pool as `0x${string}`],
-    chainId: base.id,
     query: {
       enabled: !!address && !!CONTRACT_ADDRESSES.flair && !!CONTRACT_ADDRESSES.pool,
+      refetchInterval: 10_000,
     },
   });
+
+  const flairBalances = flairBatch?.[0]?.result;
+  const equippedFlairIds = flairBatch?.[1]?.result;
+  const isApproved = flairBatch?.[2]?.result as boolean | undefined;
 
   // Contract execution hooks
   const executeBuyFlair = useContract(ExecutionType.WRITABLE, "PinsAndFlair", "buyFlair");
@@ -143,8 +99,6 @@ export function useFlair(): UseFlairReturn {
 
   // Parse owned flair from balanceOfBatch results
   const ownedFlair = useMemo((): FlairItem[] => {
-    if (!flairBalances || !Array.isArray(flairBalances)) return [];
-
     // Build a set of equipped token IDs for quick lookup
     const equippedIds = new Set<string>();
     if (equippedFlairIds && Array.isArray(equippedFlairIds)) {
@@ -156,22 +110,46 @@ export function useFlair(): UseFlairReturn {
     }
 
     const items: FlairItem[] = [];
+    const addedIds = new Set<string>();
 
     // flairBalances is an array of balances corresponding to ALL_TOKEN_IDS
-    (flairBalances as readonly bigint[]).forEach((balance, index) => {
-      if (balance > 0n) {
-        const tokenId = ALL_TOKEN_IDS[index];
-        const tokenData = getTokenById(Number(tokenId));
+    if (flairBalances && Array.isArray(flairBalances)) {
+      (flairBalances as readonly bigint[]).forEach((balance, index) => {
+        if (balance > 0n) {
+          const tokenId = ALL_TOKEN_IDS[index];
+          const tokenData = getTokenById(Number(tokenId));
+          if (tokenData) {
+            const isEquipped = equippedIds.has(tokenId.toString());
+            addedIds.add(tokenId.toString());
+            items.push({
+              id: tokenId.toString(),
+              tokenId,
+              gauge: tokenData.gauge,
+              rarity: tokenData.rarity,
+              weight: tokenData.weight,
+              poolFeeDiscount: tokenData.poolFeeDiscount,
+              isEquipped,
+              balance, // wallet balance (excludes equipped copy held by pool)
+            });
+          }
+        }
+      });
+    }
+
+    // Equipped flair transferred to pool — wallet balance is 0 but user still owns it
+    equippedIds.forEach(idStr => {
+      if (!addedIds.has(idStr)) {
+        const tokenData = getTokenById(Number(idStr));
         if (tokenData) {
-          const isEquipped = equippedIds.has(tokenId.toString());
           items.push({
-            id: tokenId.toString(),
-            tokenId,
+            id: idStr,
+            tokenId: BigInt(idStr),
             gauge: tokenData.gauge,
             rarity: tokenData.rarity,
             weight: tokenData.weight,
             poolFeeDiscount: tokenData.poolFeeDiscount,
-            isEquipped,
+            isEquipped: true,
+            balance: 0n,
           });
         }
       }
@@ -204,6 +182,8 @@ export function useFlair(): UseFlairReturn {
         return;
       }
 
+      // Look up wallet balance from ownedFlair if available
+      const owned = ownedFlair.find(f => f.tokenId === flairId);
       slots[index] = {
         id: flairId.toString(),
         tokenId: flairId,
@@ -212,14 +192,15 @@ export function useFlair(): UseFlairReturn {
         weight: tokenData.weight,
         poolFeeDiscount: tokenData.poolFeeDiscount,
         isEquipped: true,
+        balance: owned?.balance ?? 0n,
       };
     });
 
     return slots;
-  }, [equippedFlairIds]);
+  }, [equippedFlairIds, ownedFlair]);
 
   const buyFlair = useCallback(
-    async (flairTypeId: bigint, _price: bigint) => {
+    async (flairTypeId: bigint, _price: bigint, useDonut: boolean = false) => {
       if (!isConnected || !address) {
         toast.error("Wallet not connected");
         return;
@@ -238,9 +219,17 @@ export function useFlair(): UseFlairReturn {
 
       setIsBuying(true);
       try {
-        await executeBuyFlair([flairTypeId]);
+        const tokenAddress = getPaymentTokenAddress(useDonut);
+        const poolAddress = CONTRACT_ADDRESSES.pool as `0x${string}`;
+        const tokenName = useDonut ? "DONUT" : "WETH";
+
+        await ensureTokenApproval(address, tokenAddress, poolAddress, _price, tokenName);
+
+        await executeBuyFlair([useDonut, flairTypeId]);
+        await refetchFlairBatch();
         toast.success(`${tokenData.gauge} ${tokenData.rarity} flair purchased!`);
       } catch (error: unknown) {
+        console.log(error)
         const parsed = parseContractError(
           error instanceof Error ? error : new Error(String(error)),
           {
@@ -260,7 +249,7 @@ export function useFlair(): UseFlairReturn {
         setIsBuying(false);
       }
     },
-    [address, isConnected, executeBuyFlair]
+    [address, isConnected, executeBuyFlair, refetchFlairBatch]
   );
 
   const equipFlair = useCallback(
@@ -280,15 +269,17 @@ export function useFlair(): UseFlairReturn {
         // Check if approval is needed
         if (!isApproved) {
           toast.info("Approving flair contract...");
-          await executeApproval([CONTRACT_ADDRESSES.pool as `0x${string}`, true]);
+          const { hash: approvalHash } = await executeApproval([CONTRACT_ADDRESSES.pool as `0x${string}`, true]);
 
-          // Refetch approval status
-          await refetchApproval();
+          // Wait for an extra confirmation so the next tx sees the approval
+          await waitForTransactionReceipt(wagmiConfig as any, { hash: approvalHash, confirmations: 2 });
+          await refetchFlairBatch();
           toast.success("Approval granted!");
         }
 
         // Equip the flair - contract expects (uint256 flairId, string cid)
         await executeEquipFlair([flairId, cid]);
+        await refetchFlairBatch();
         toast.success("Flair equipped!");
       } catch (error: unknown) {
         const parsed = parseContractError(
@@ -310,7 +301,7 @@ export function useFlair(): UseFlairReturn {
         setIsEquipping(false);
       }
     },
-    [address, isConnected, executeApproval, executeEquipFlair, isApproved, refetchApproval]
+    [address, isConnected, executeApproval, executeEquipFlair, isApproved, refetchFlairBatch]
   );
 
   const unequipFlair = useCallback(
@@ -329,6 +320,7 @@ export function useFlair(): UseFlairReturn {
       try {
         // Unequip the flair - contract expects (uint256 flairId, string cid)
         await executeUnequipFlair([flairId, cid]);
+        await refetchFlairBatch();
         toast.success("Flair unequipped!");
       } catch (error: unknown) {
         const parsed = parseContractError(
@@ -350,11 +342,11 @@ export function useFlair(): UseFlairReturn {
         setIsEquipping(false);
       }
     },
-    [address, isConnected, executeUnequipFlair]
+    [address, isConnected, executeUnequipFlair, refetchFlairBatch]
   );
 
   const fuseFlair = useCallback(
-    async (flairId: bigint) => {
+    async (flairId: bigint, fusionCost: bigint) => {
       if (!isConnected || !address) {
         toast.error("Wallet not connected");
         return;
@@ -362,7 +354,19 @@ export function useFlair(): UseFlairReturn {
 
       setIsFusing(true);
       try {
+        // Approve PEEPLES spending for fusion cost
+        if (fusionCost > 0n) {
+          await ensureTokenApproval(
+            address,
+            CONTRACT_ADDRESSES.peeples as `0x${string}`,
+            CONTRACT_ADDRESSES.pool as `0x${string}`,
+            fusionCost,
+            "PEEPLES"
+          );
+        }
+
         await executeFuseFlair([flairId]);
+        await refetchFlairBatch();
         toast.success("Flair upgraded!");
       } catch (error: unknown) {
         const parsed = parseContractError(
@@ -384,7 +388,7 @@ export function useFlair(): UseFlairReturn {
         setIsFusing(false);
       }
     },
-    [address, isConnected, executeFuseFlair]
+    [address, isConnected, executeFuseFlair, refetchFlairBatch]
   );
 
   // Calculate total pool fee discount from equipped flair
@@ -414,29 +418,11 @@ export function useFlair(): UseFlairReturn {
     return Math.max(0, Math.min(discount, basePoolFee)); // Clamp between 0 and base fee
   }, [equippedFlair]);
 
-  // Return mock data in mock mode
-  if (MOCK_MODE) {
-    const mockData = getMockFlairData();
-    return {
-      ownedFlair: mockData.ownedFlair,
-      equippedFlair: mockData.equippedFlair,
-      totalPoolFeeDiscount: 0,
-      isLoading: false,
-      isBuying,
-      isEquipping,
-      isFusing,
-      buyFlair,
-      equipFlair,
-      unequipFlair,
-      fuseFlair,
-    };
-  }
-
   return {
     ownedFlair,
     equippedFlair,
     totalPoolFeeDiscount,
-    isLoading: (flairFetchStatus === 'fetching' && !flairBalances) || (equippedFetchStatus === 'fetching' && !equippedFlairIds),
+    isLoading: fetchStatus === 'fetching' && flairBatch === undefined,
     isBuying,
     isEquipping,
     isFusing,

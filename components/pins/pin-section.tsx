@@ -11,10 +11,12 @@ import {
 import { Lock, Plus, Sparkles, Zap, ExternalLink } from "lucide-react";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { formatUnits } from "viem";
+import { useMinerState } from "@/hooks/useMinerState";
 
 export const PinSection: React.FC = () => {
-  const { hasPin, pinId, canMint, isMinting, mintConfig, mintPin } = usePins();
+  const { hasPin, pinId, canMint, isMinting, pinMintPrice, mintPin } = usePins();
   const { equippedFlair } = useFlair();
+  const { minerState } = useMinerState();
 
   const [mintedPin, setMintedPin] = useState<string>("");
   const [useDonut, setUseDonut] = useState<boolean>(false);
@@ -278,14 +280,16 @@ export const PinSection: React.FC = () => {
               {/* Requirements & CTA */}
               <div className="space-y-4">
                 {/* Price Display */}
-                {mintConfig && (
+                {pinMintPrice !== undefined && (
                   <div className="glazed-card px-4 py-3 max-w-[280px] mx-auto">
                     <div className="text-xs text-[#A89485] uppercase tracking-wider mb-2 text-center">
                       Mint Price
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-[#2D2319] amatic">
-                          0
+                          {useDonut && minerState?.donutPrice
+                            ? `${Math.ceil(Number(pinMintPrice * 10n**18n / minerState.donutPrice) / 10**18).toLocaleString()} DONUT`
+                            : `${parseFloat(formatUnits(pinMintPrice, 18))} ETH`}
                       </div>
                     </div>
                   </div>

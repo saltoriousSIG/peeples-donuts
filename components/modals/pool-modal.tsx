@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatUnits, parseUnits, zeroAddress } from "viem";
-import { useReadContract, useAccount } from "wagmi";
+import { useReadContracts, useAccount } from "wagmi";
 import { base } from "wagmi/chains";
 import { cn } from "@/lib/utils";
 import { X, Users, Percent, ArrowDownToLine, ArrowUpFromLine, Coins, Info, Crown } from "lucide-react";
@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePool } from "@/providers/PoolProvider";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { DATA } from "@/lib/abi/data";
-import { MULTICALL_ABI } from "@/lib/abi/multicall";
-import { getEthPrice } from "@/lib/utils";
+import { ERC20 } from "@/lib/abi/erc20";
+import { useMinerState } from "@/hooks/useMinerState";
+import { useDonutPriceUsd } from "@/hooks/useDonutPriceUsd";
 import { useQuery } from "@tanstack/react-query";
 import { PoolVoting } from "@/components/pool-voting";
 import { BuyKingGlazer } from "@/components/buy-king-glazer";
@@ -27,6 +28,7 @@ interface PoolModalProps {
 export function PoolModal({ isOpen, onClose }: PoolModalProps) {
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState<"deposit" | "withdraw">("deposit");
+  const [useDonut, setUseDonut] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState<boolean>(false);
   const [shareAction, setShareAction] = useState<ShareAction>();
   const [shareDetails, setShareActionDetails] = useState<{
@@ -48,33 +50,43 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
     shareTokenBalance,
     deposit,
     withdraw,
+    pendingClaim,
+    claim,
+    buyKingGlazer,
+    vote,
+    voteEpoch,
+    votes,
+    hasUserVoted,
   } = usePool();
 
-  const { data: rawMinerState } = useReadContract({
-    address: CONTRACT_ADDRESSES.multicall,
-    abi: MULTICALL_ABI,
-    functionName: "getMiner",
-    args: [address ?? zeroAddress],
-    chainId: base.id,
+  const { minerState: rawMinerState } = useMinerState();
+
+  const { data: modalBatch } = useReadContracts({
+    contracts: [
+      {
+        address: CONTRACT_ADDRESSES.pool,
+        abi: DATA,
+        functionName: "calculateWithdrawalAmounts",
+        args: [shareTokenBalance as bigint],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.donut as `0x${string}`,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [address as `0x${string}`],
+        chainId: base.id,
+      },
+    ],
     query: {
-      refetchInterval: 3_000,
+      enabled: !!address,
     },
   });
 
-  const { data: withdrawalAmounts } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool,
-    abi: DATA,
-    functionName: "calculateWithdrawalAmounts",
-    args: [shareTokenBalance as bigint],
-    chainId: base.id,
-  });
+  const withdrawalAmounts = modalBatch?.[0]?.result as { wethOut: bigint; donutOut: bigint } | undefined;
+  const donutBalance = modalBatch?.[1]?.result as bigint | undefined;
 
-  const { data: ethPrice } = useQuery({
-    queryKey: ["ethPrice"],
-    queryFn: getEthPrice,
-    staleTime: 60000,
-    refetchInterval: 60000,
-  });
+  const { donutPriceUsd, ethPrice } = useDonutPriceUsd();
 
   // King Glazer info
   const minerAddress = rawMinerState?.miner ?? zeroAddress;
@@ -113,7 +125,7 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
   const isUserKing = address && minerAddress.toLowerCase() === address.toLowerCase();
 
   const { wethUsdValue, donutUsdValue } = useMemo(() => {
-    if (!ethPrice || !rawMinerState || !tvl) {
+    if (!ethPrice || !tvl) {
       return { wethUsdValue: "0", donutUsdValue: "0" };
     }
     return {
@@ -124,15 +136,13 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
         maximumFractionDigits: 2,
       }),
       donutUsdValue: (
-        parseFloat(formatUnits(tvl.donutTVL, 18)) *
-        parseFloat(formatUnits(rawMinerState?.donutPrice || 0n, 18)) *
-        ethPrice
+        parseFloat(formatUnits(tvl.donutTVL, 18)) * donutPriceUsd
       ).toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }),
     };
-  }, [ethPrice, rawMinerState, tvl]);
+  }, [ethPrice, donutPriceUsd, tvl]);
 
   const totalTvlUsd = useMemo(() => {
     return (
@@ -342,13 +352,10 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
           </div>
 
           <PendingClaim
-            ethPrice={ethPrice as number}
-            donutPrice={
-              ethPrice
-                ? parseFloat(formatUnits(rawMinerState?.donutPrice || 0n, 18)) *
-                  ethPrice
-                : 0
-            }
+            ethPrice={ethPrice}
+            donutPrice={donutPriceUsd}
+            pendingClaim={pendingClaim}
+            claim={claim}
           />
 
           {/* Deposit/Withdraw Card */}
@@ -379,6 +386,31 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
               </button>
             </div>
 
+            {mode === "deposit" && (
+              <div className="flex gap-2 p-1.5 bg-white/30 rounded-xl mb-4">
+                <button
+                  onClick={() => setUseDonut(false)}
+                  className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all ${
+                    !useDonut
+                      ? "bg-white/70 text-[#2D2319] shadow-sm"
+                      : "text-[#5C4A3D] hover:bg-white/40"
+                  }`}
+                >
+                  WETH
+                </button>
+                <button
+                  onClick={() => setUseDonut(true)}
+                  className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all ${
+                    useDonut
+                      ? "bg-white/70 text-[#2D2319] shadow-sm"
+                      : "text-[#5C4A3D] hover:bg-white/40"
+                  }`}
+                >
+                  DONUT
+                </button>
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <div className="text-xs font-bold text-[#5C4A3D] uppercase tracking-wider mb-2">
@@ -397,7 +429,7 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
                     }`}
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#A89485] font-semibold">
-                    ${mode === "deposit" ? "WETH" : "SPEEP"}
+                    {mode === "deposit" ? (useDonut ? "DONUT" : "WETH") : "SPEEP"}
                   </div>
                 </div>
               </div>
@@ -409,7 +441,7 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
                     className="flex-1 px-4 py-2.5 rounded-xl bg-white/50 hover:bg-white/70 text-xs font-bold text-[#5C4A3D] transition-all hover:scale-105 active:scale-95"
                     onClick={() => {
                       const balance =
-                        mode === "deposit" ? wethBalance : shareTokenBalance;
+                        mode === "deposit" ? (useDonut ? donutBalance : wethBalance) : shareTokenBalance;
                       if (!balance) {
                         return setAmount("0");
                       }
@@ -441,17 +473,21 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
                     <div className="flex justify-between text-sm">
                       <span className="text-[#5C4A3D]">Available Balance</span>
                       <span className="font-bold text-[#2D2319]">
-                        {parseFloat(formatUnits(wethBalance ?? 0n, 18)).toFixed(4)} WETH
+                        {useDonut
+                          ? `${parseFloat(formatUnits(donutBalance ?? 0n, 18)).toFixed(2)} DONUT`
+                          : `${parseFloat(formatUnits(wethBalance ?? 0n, 18)).toFixed(4)} WETH`}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#5C4A3D]">Min. Deposit</span>
-                      <span className="font-bold text-[#2D2319]">
-                        {config
-                          ? parseFloat(formatUnits(config.minDeposit, 18)).toFixed(4)
-                          : "0"} WETH
-                      </span>
-                    </div>
+                    {!useDonut && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[#5C4A3D]">Min. Deposit</span>
+                        <span className="font-bold text-[#2D2319]">
+                          {config
+                            ? parseFloat(formatUnits(config.minDeposit, 18)).toFixed(4)
+                            : "0"} WETH
+                        </span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -477,7 +513,8 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
                 onClick={async () => {
                   if (mode === "deposit") {
                     await deposit(
-                      parseInt(parseUnits(amount || "0", 18).toString())
+                      parseInt(parseUnits(amount || "0", 18).toString()),
+                      useDonut
                     );
                     setShareAction("deposit");
                     setShareActionDetails({
@@ -517,9 +554,18 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
               });
               setShareModalOpen(true);
             }}
+            config={config}
+            buyKingGlazer={buyKingGlazer}
+            state={state}
           />
 
-          <PoolVoting />
+          <PoolVoting
+            vote={vote}
+            voteEpoch={voteEpoch}
+            votes={votes}
+            hasUserVoted={hasUserVoted}
+            config={config}
+          />
 
           <RebalanceCard />
 

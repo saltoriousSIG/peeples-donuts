@@ -18,4 +18,9 @@ export const wagmiConfig = createConfig({
     storage: cookieStorage,
   }),
   pollingInterval: 12_000,
+  batch: {
+    multicall: {
+      wait: 50,
+    },
+  },
 });

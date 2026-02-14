@@ -14,11 +14,8 @@ interface MintButtonProps {
 
 const STEP_LABELS: Record<string, string> = {
   idle: "Mint & Join",
-  approving: "Approving WETH...",
-  depositing: "Depositing...",
-  minting_pin: "Minting Pin...",
-  buying_flair: "Buying Flair...",
-  equipping: "Equipping Flair...",
+  approving: "Approving...",
+  minting_pin: "Setting Up Your Pin...",
   complete: "Complete!",
 };
 

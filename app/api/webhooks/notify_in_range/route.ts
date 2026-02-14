@@ -3,9 +3,7 @@ import { headers } from "next/headers";
 import axios from "axios";
 
 export async function POST(req: NextRequest) {
-  console.log(process.env.CRON_SECRET);
   const headersList = await headers();
-  console.log(headersList.get("authorization"));
   if (
     headersList.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
   ) {

@@ -1,17 +1,26 @@
 "use client";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { useCanBuyGlaze } from "@/hooks/useCanBuyGlaze";
 import { Badge } from "@/components/ui/badge";
-import { usePool } from "@/providers/PoolProvider";
 import { formatUnits } from "viem";
+import { PoolConfig, PoolState } from "@/types/pool.type";
 
 interface BuyKingGlazerProps {
   onBuy: () => void;
+  config: PoolConfig;
+  buyKingGlazer: () => Promise<void>;
+  state: PoolState;
 }
 
-export function BuyKingGlazer({ onBuy }: BuyKingGlazerProps) {
+export const BuyKingGlazer = React.memo(function BuyKingGlazer({
+  onBuy,
+  config,
+  buyKingGlazer,
+  state,
+}: BuyKingGlazerProps) {
   const { canBuy, currentBreakEven, targetBreakEven } = useCanBuyGlaze();
-  const { config, buyKingGlazer, state } = usePool();
+
   if (state?.isActive) {
     return (
       <div className="bg-gradient-to-br from-[#5C946E] via-[#4ECDC4] to-[#5C946E] rounded-xl p-4 shadow-md hover:shadow-xl transition-all duration-300 relative overflow-hidden group">
@@ -117,7 +126,7 @@ export function BuyKingGlazer({ onBuy }: BuyKingGlazerProps) {
 
         {/* Action button */}
         <Button
-          onClick={async() => { 
+          onClick={async() => {
             await buyKingGlazer();
             onBuy();
           }}
@@ -129,4 +138,4 @@ export function BuyKingGlazer({ onBuy }: BuyKingGlazerProps) {
       </div>
     </div>
   );
-}
+});

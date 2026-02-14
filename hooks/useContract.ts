@@ -21,6 +21,7 @@ import { MULTICALL_ABI } from "@/lib/abi/multicall";
 import { PEEPLES_BLAZERY } from "@/lib/abi/peeples-blazery";
 import { PIN_ABI } from "@/lib/abi/pin";
 import { FLAIR_ABI } from "@/lib/abi/flair";
+import { DIAMOND_MULTICALL } from "@/lib/abi/diamond_multicall";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 
 type Facets =
@@ -33,6 +34,7 @@ type Facets =
   | "Auction"
   | "FlashLoan"
   | "PinsAndFlair"
+  | "DiamondMulticall"
   | "ERC20"
   | "Multicall"
   | "PeeplesBlazer"
@@ -79,6 +81,8 @@ const useContract = <T extends ExecutionType, R = any>(
         return FLASH_LOAN_ABI;
       case "PinsAndFlair":
         return PINS_AND_FLAIR_ABI;
+      case "DiamondMulticall":
+        return DIAMOND_MULTICALL;
       case "ERC20":
         return ERC20;
       case "Multicall":
@@ -107,6 +111,7 @@ const useContract = <T extends ExecutionType, R = any>(
         "Auction",
         "FlashLoan",
         "PinsAndFlair",
+        "DiamondMulticall",
       ].includes(facet),
     [facet]
   );
@@ -151,7 +156,6 @@ const useContract = <T extends ExecutionType, R = any>(
             const receipt = await waitForTransactionReceipt(wagmiConfig as any, {
               hash,
             });
-            console.log(result);
             res = { hash, receipt, result: result?.toString() };
             break;
         }
@@ -161,10 +165,8 @@ const useContract = <T extends ExecutionType, R = any>(
           const revertError = e.walk(
             (err) => err instanceof ContractFunctionRevertedError
           );
-          console.log(revertError);
           if (revertError instanceof ContractFunctionRevertedError) {
             const errorName = revertError.data?.errorName ?? "";
-            console.log(errorName);
             if (revertError.data?.args) {
               throw new Error(revertError.data?.args[0] as string);
             }

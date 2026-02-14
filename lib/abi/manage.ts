@@ -16,6 +16,61 @@ export const MANAGE = [
     type: "error",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "winner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "winningBid",
+        type: "uint256",
+      },
+    ],
+    name: "AuctionSettled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "auctionId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "endTime",
+        type: "uint256",
+      },
+    ],
+    name: "AuctionStarted",
+    type: "event",
+  },
+  {
     anonymous: false,
     inputs: [
       {
@@ -78,25 +133,6 @@ export const MANAGE = [
       {
         indexed: true,
         internalType: "address",
-        name: "depositor",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "RewardsDeposited",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
         name: "rebalancer",
         type: "address",
       },
@@ -104,6 +140,12 @@ export const MANAGE = [
         indexed: false,
         internalType: "uint256",
         name: "donutSwapped",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "wethBought",
         type: "uint256",
       },
     ],
@@ -132,13 +174,6 @@ export const MANAGE = [
   },
   {
     inputs: [],
-    name: "rebalance",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
     name: "owner",
     outputs: [
       {
@@ -148,6 +183,13 @@ export const MANAGE = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "rebalance",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {

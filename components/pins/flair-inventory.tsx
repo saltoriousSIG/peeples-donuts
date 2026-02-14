@@ -1,79 +1,104 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useFlair } from "@/hooks/useFlair";
 import { usePins } from "@/hooks/usePins";
 import {
   RARITY_ICONS,
-  GAUGE_ICONS,
   getTokenById,
   getFlairImagePath,
   type Rarity,
 } from "@/lib/flair-data";
 import { Check, X, Zap, Package } from "lucide-react";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
-import generate_pin from "@/lib/server_functions/generate_pin";
+//import generate_pin from "@/lib/server_functions/generate_pin";
 import { toast } from "sonner";
 
 export const FlairInventory: React.FC = () => {
-  const { hasPin } = usePins();
-  const { ownedFlair, equipFlair, unequipFlair, isEquipping, isLoading } = useFlair();
+  const { hasPin, pinCid } = usePins();
+  const { ownedFlair, equipFlair, unequipFlair, isEquipping, isLoading } =
+    useFlair();
   const { fUser } = useFrameContext();
   const [isGeneratingCid, setIsGeneratingCid] = useState(false);
 
-  const handleEquip = async (flairId: bigint) => {
-    if (!fUser?.fid) {
-      toast.error("Frame user not available");
-      return;
-    }
+  const handleEquip = useCallback(
+    async (flairId: bigint) => {
+      if (!fUser?.fid) {
+        toast.error("Frame user not available");
+        return;
+      }
 
-    setIsGeneratingCid(true);
-    try {
-      // Generate new pin metadata with flair equipped
-      const pinData = await generate_pin(fUser.fid);
-      await equipFlair(flairId, pinData.cid);
-    } catch (error) {
-      // Error already handled by equipFlair
-    } finally {
-      setIsGeneratingCid(false);
-    }
-  };
+      if (!pinCid) {
+        toast.error("Pin CID not available");
+        return;
+      }
 
-  const handleUnequip = async (flairId: bigint) => {
-    if (!fUser?.fid) {
-      toast.error("Frame user not available");
-      return;
-    }
+      setIsGeneratingCid(true);
+      try {
+        // Generate new pin metadata with flair equipped
+        //const pinData = await generate_pin(fUser.fid);
+        await equipFlair(flairId, pinCid);
+      } catch (error) {
+        // Error already handled by equipFlair
+      } finally {
+        setIsGeneratingCid(false);
+      }
+    },
+    [equipFlair, fUser, pinCid]
+  );
 
-    setIsGeneratingCid(true);
-    try {
-      // Generate new pin metadata with flair unequipped
-      const pinData = await generate_pin(fUser.fid);
-      await unequipFlair(flairId, pinData.cid);
-    } catch (error) {
-      // Error already handled by unequipFlair
-    } finally {
-      setIsGeneratingCid(false);
-    }
-  };
+  const handleUnequip = useCallback(
+    async (flairId: bigint) => {
+      if (!fUser?.fid) {
+        toast.error("Frame user not available");
+        return;
+      }
+
+      if (!pinCid) {
+        toast.error("Pin CID not available");
+        return;
+      }
+
+      setIsGeneratingCid(true);
+      try {
+        // Generate new pin metadata with flair unequipped
+        await unequipFlair(flairId, pinCid);
+      } catch (error) {
+        // Error already handled by unequipFlair
+      } finally {
+        setIsGeneratingCid(false);
+      }
+    },
+    [unequipFlair, pinCid, fUser]
+  );
 
   const getRarityGlow = (rarity: Rarity) => {
     switch (rarity) {
-      case "Bronze": return "glow-bronze";
-      case "Silver": return "glow-silver";
-      case "Gold": return "glow-gold";
-      case "Platinum": return "glow-legendary";
-      default: return "";
+      case "Bronze":
+        return "glow-bronze";
+      case "Silver":
+        return "glow-silver";
+      case "Gold":
+        return "glow-gold";
+      case "Platinum":
+        return "glow-legendary";
+      default:
+        return "";
     }
   };
 
   const getRarityBadgeClass = (rarity: Rarity) => {
     switch (rarity) {
-      case "Bronze": return "badge-bronze";
-      case "Silver": return "badge-silver";
-      case "Gold": return "badge-gold";
-      case "Platinum": return "badge-legendary";
-      default: return "";
+      case "Bronze":
+        return "badge-bronze";
+      case "Silver":
+        return "badge-silver";
+      case "Gold":
+        return "badge-gold";
+      case "Platinum":
+        return "badge-legendary";
+      default:
+        return "";
     }
   };
 
@@ -109,12 +134,11 @@ export const FlairInventory: React.FC = () => {
           {ownedFlair.map((flair, index) => {
             const tokenData = getTokenById(Number(flair.tokenId));
             const rarity = (flair.rarity as Rarity) || "Bronze";
-            const gaugeIcon = tokenData ? GAUGE_ICONS[tokenData.gauge] : "?";
 
             return (
               <div
                 key={flair.id}
-                className={`glazed-card glazed-card-interactive p-3 animate-scale-in ${
+                className={`glazed-card glazed-card-interactive p-3 animate-scale-in relative ${
                   flair.isEquipped ? getRarityGlow(rarity) : ""
                 } ${flair.isEquipped ? "ring-2 ring-[#82AD94]" : ""}`}
                 style={{ animationDelay: `${index * 0.05}s` }}
@@ -123,6 +147,13 @@ export const FlairInventory: React.FC = () => {
                 {flair.isEquipped && (
                   <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#82AD94] flex items-center justify-center shadow-sm">
                     <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+
+                {/* Quantity badge */}
+                {flair.balance > 1n && (
+                  <div className="absolute -top-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-[#3D2914] flex items-center justify-center shadow-sm">
+                    <span className="text-[10px] font-bold text-white">x{Number(flair.balance)}</span>
                   </div>
                 )}
 
@@ -137,7 +168,9 @@ export const FlairInventory: React.FC = () => {
                       />
                     )}
                   </div>
-                  <span className={`badge-rarity ${getRarityBadgeClass(rarity)} text-[8px] py-0.5`}>
+                  <span
+                    className={`badge-rarity ${getRarityBadgeClass(rarity)} text-[8px] py-0.5`}
+                  >
                     {RARITY_ICONS[rarity]} {rarity}
                   </span>
                 </div>
@@ -190,7 +223,9 @@ export const FlairInventory: React.FC = () => {
           <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-white to-[#FFF8E7] flex items-center justify-center shadow-inner">
             <span className="text-4xl opacity-40">🎭</span>
           </div>
-          <h3 className="text-lg font-bold text-[#2D2319] mb-2">No Flair Yet</h3>
+          <h3 className="text-lg font-bold text-[#2D2319] mb-2">
+            No Flair Yet
+          </h3>
           <p className="text-sm text-[#5C4A3D] mb-4">
             Buy flair from the shop to boost your yield
           </p>

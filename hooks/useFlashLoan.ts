@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { base } from "wagmi/chains";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { FLASH_LOAN_ABI } from "@/lib/abi/flash-loan";
@@ -21,30 +21,34 @@ export function useFlashLoan(tokenAddress: `0x${string}`): UseFlashLoanReturn {
   const { address, isConnected } = useAccount();
   const [isExecuting, setIsExecuting] = useState(false);
 
-  // Get max flash loan amount for the token
-  const { data: maxLoanAmount, fetchStatus: maxLoanFetchStatus } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: FLASH_LOAN_ABI,
-    functionName: "maxFlashLoan",
-    args: [tokenAddress],
-    chainId: base.id,
+  // Batch flash loan reads into a single multicall
+  const { data: flashBatch, fetchStatus } = useReadContracts({
+    contracts: [
+      // [0] maxFlashLoan
+      {
+        address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+        abi: FLASH_LOAN_ABI,
+        functionName: "maxFlashLoan",
+        args: [tokenAddress],
+        chainId: base.id,
+      },
+      // [1] flashFee (sample for 1 token to derive fee rate)
+      {
+        address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+        abi: FLASH_LOAN_ABI,
+        functionName: "flashFee",
+        args: [tokenAddress, 1000000000000000000n],
+        chainId: base.id,
+      },
+    ],
     query: {
       enabled: !!CONTRACT_ADDRESSES.pool,
       refetchInterval: 30_000,
     },
   });
 
-  // Get flash loan fee for a standard amount (we'll use this to calculate fee rate)
-  const { data: sampleFee } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: FLASH_LOAN_ABI,
-    functionName: "flashFee",
-    args: [tokenAddress, 1000000000000000000n], // 1 token
-    chainId: base.id,
-    query: {
-      enabled: !!CONTRACT_ADDRESSES.pool,
-    },
-  });
+  const maxLoanAmount = flashBatch?.[0]?.result as bigint | undefined;
+  const sampleFee = flashBatch?.[1]?.result as bigint | undefined;
 
   // Contract execution hook
   const executeFlashLoan = useContract(ExecutionType.WRITABLE, "FlashLoan", "flashLoan");
@@ -109,7 +113,7 @@ export function useFlashLoan(tokenAddress: `0x${string}`): UseFlashLoanReturn {
 
   return {
     maxLoanAmount: maxLoanAmount as bigint | undefined,
-    isLoading: maxLoanFetchStatus === 'fetching' && maxLoanAmount === undefined,
+    isLoading: fetchStatus === 'fetching' && flashBatch === undefined,
     isExecuting,
     calculateFee,
     executeLoan,

@@ -1,18 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
-import {
-  useAccount,
-  useReadContract,
-} from "wagmi";
-import { base } from "wagmi/chains";
-import { zeroAddress, formatUnits, type Address } from "viem";
-import { CONTRACT_ADDRESSES } from "@/lib/contracts";
-import { MULTICALL_ABI } from "@/lib/abi/multicall";
-import { getEthPrice } from "@/lib/utils";
+import { useAccount } from "wagmi";
+import { useMinerState } from "@/hooks/useMinerState";
+import { useDonutPriceUsd } from "@/hooks/useDonutPriceUsd";
 import { PageHeader, type MiniAppContext } from "@/components/page-header";
-import { useQuery } from "@tanstack/react-query";
 import { PoolPositionCard } from "./pool-position-card";
 import { PinFlairSummary } from "./pin-flair-summary";
 import { YieldOverview } from "./yield-overview";
@@ -23,58 +15,14 @@ import { GlazeMetrics } from "./glaze-metrics";
 
 export type { MiniAppContext };
 
-type MinerState = {
-  epochId: bigint | number;
-  initPrice: bigint;
-  startTime: bigint | number;
-  glazed: bigint;
-  price: bigint;
-  dps: bigint;
-  nextDps: bigint;
-  donutPrice: bigint;
-  miner: Address;
-  uri: string;
-  ethBalance: bigint;
-  wethBalance: bigint;
-  donutBalance: bigint;
-};
-
 
 export default function Dashboard() {
   const { context: frameContext } = useFrameContext();
   const context = frameContext as MiniAppContext | null;
 
-  const { data: ethUsdPrice = 3500 } = useQuery({
-    queryKey: ["ethPrice"],
-    queryFn: getEthPrice,
-    staleTime: 60000,
-    refetchInterval: 60000,
-  });
-
   const { address } = useAccount();
-
-  // Get miner state
-  const { data: rawMinerState } = useReadContract({
-    address: CONTRACT_ADDRESSES.multicall,
-    abi: MULTICALL_ABI,
-    functionName: "getMiner",
-    args: [address ?? zeroAddress],
-    chainId: base.id,
-    query: {
-      refetchInterval: 3_000,
-    },
-  });
-
-  const minerState = useMemo(() => {
-    if (!rawMinerState) return undefined;
-    return rawMinerState as unknown as MinerState;
-  }, [rawMinerState]);
-
-  // Calculate DONUT price in USD
-  const donutPriceUsd = useMemo(() => {
-    if (!minerState?.donutPrice) return 0;
-    return parseFloat(formatUnits(minerState.donutPrice, 18)) * ethUsdPrice;
-  }, [minerState?.donutPrice, ethUsdPrice]);
+  const { minerState } = useMinerState();
+  const { donutPriceUsd, ethPrice: ethUsdPrice } = useDonutPriceUsd();
 
   // Signal ready when miner state is loaded
 

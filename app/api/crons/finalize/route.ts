@@ -23,7 +23,6 @@ export async function GET(req: NextRequest) {
       args: [],
     });
 
-    console.log("Pool State:", poolState);
 
     //check if pool is active, if it isnt do nothing if it is, check if we are still king glazer, if we arent call check and finalize
     if (!poolState.isActive) {
@@ -39,7 +38,6 @@ export async function GET(req: NextRequest) {
         args: [zeroAddress],
       });
 
-      console.log("Miner State:", minerState);
 
       if (
         minerState.miner.toLowerCase() !== CONTRACT_ADDRESSES.pool.toLowerCase()
@@ -70,7 +68,6 @@ export async function GET(req: NextRequest) {
       }
     }
   } catch (e: any) {
-    console.log("Error in cron job:", e);
     return NextResponse.json(
       { error: e.message || "Unknown error" },
       { status: 500 }

@@ -52,6 +52,11 @@ export const PINS_AND_FLAIR_ABI = [
   },
   {
     inputs: [],
+    name: "NoPinOwned",
+    type: "error",
+  },
+  {
+    inputs: [],
     name: "NotPoolMember",
     type: "error",
   },
@@ -73,6 +78,11 @@ export const PINS_AND_FLAIR_ABI = [
   {
     inputs: [],
     name: "PeeplesTokenNotSet",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "PinMintingNotInitialized",
     type: "error",
   },
   {
@@ -305,6 +315,34 @@ export const PINS_AND_FLAIR_ABI = [
   {
     inputs: [
       {
+        internalType: "bool",
+        name: "useDonut",
+        type: "bool",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        internalType: "string",
+        name: "cid",
+        type: "string",
+      },
+    ],
+    name: "buyAndEquipFlair",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bool",
+        name: "useDonut",
+        type: "bool",
+      },
+      {
         internalType: "uint256",
         name: "tokenId",
         type: "uint256",
@@ -484,6 +522,11 @@ export const PINS_AND_FLAIR_ABI = [
         internalType: "bool",
         name: "useDonut",
         type: "bool",
+      },
+      {
+        internalType: "uint256",
+        name: "extraAmount",
+        type: "uint256",
       },
       {
         internalType: "uint256",

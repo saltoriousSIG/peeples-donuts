@@ -10,6 +10,7 @@ export { VOTE } from "./vote";
 export { AUCTION_ABI } from "./auction";
 export { FLASH_LOAN_ABI } from "./flash-loan";
 export { PINS_AND_FLAIR_ABI } from "./pins-and-flair";
+export { DIAMOND_MULTICALL } from "./diamond_multicall";
 
 // External Token Contract ABIs
 export { PIN_ABI } from "./pin";
@@ -32,6 +33,7 @@ import { VOTE } from "./vote";
 import { AUCTION_ABI } from "./auction";
 import { FLASH_LOAN_ABI } from "./flash-loan";
 import { PINS_AND_FLAIR_ABI } from "./pins-and-flair";
+import { DIAMOND_MULTICALL } from "./diamond_multicall";
 
 /**
  * Combined ABI for the Diamond proxy contract
@@ -46,4 +48,5 @@ export const DIAMOND_ABI = [
   ...AUCTION_ABI,
   ...FLASH_LOAN_ABI,
   ...PINS_AND_FLAIR_ABI,
+  ...DIAMOND_MULTICALL,
 ] as const;

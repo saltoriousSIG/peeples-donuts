@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import {
   getFlairImagePath,
-  GAUGE_ICONS,
   RARITY_CONFIG,
 } from "@/lib/flair-data";
 import { type FlairItem } from "@/hooks/useFlair";
@@ -67,11 +66,6 @@ export function FlairSlot({ flair, slotIndex, onEmptyClick, disabled }: FlairSlo
           fill
           className="object-contain p-1"
         />
-      </div>
-
-      {/* Gauge icon overlay */}
-      <div className="absolute bottom-0.5 right-0.5 text-xs opacity-70">
-        {GAUGE_ICONS[flair.gauge]}
       </div>
 
       {/* Rarity indicator */}

@@ -1,24 +1,23 @@
 // Vote Facet ABI - handles strategy voting and epoch management
 export const VOTE = [
   {
+    anonymous: false,
     inputs: [
       {
+        indexed: false,
+        internalType: "uint256",
+        name: "newEpoch",
+        type: "uint256",
+      },
+      {
+        indexed: false,
         internalType: "enum LibPeeples.Strategy",
-        name: "strategy",
+        name: "newStrategy",
         type: "uint8",
       },
     ],
-    name: "vote",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "updateEpoch",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
+    name: "EpochUpdated",
+    type: "event",
   },
   {
     anonymous: false,
@@ -40,22 +39,23 @@ export const VOTE = [
     type: "event",
   },
   {
-    anonymous: false,
+    inputs: [],
+    name: "updateEpoch",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [
       {
-        indexed: false,
-        internalType: "uint256",
-        name: "newEpoch",
-        type: "uint256",
-      },
-      {
-        indexed: false,
         internalType: "enum LibPeeples.Strategy",
-        name: "newStrategy",
+        name: "strategy",
         type: "uint8",
       },
     ],
-    name: "EpochUpdated",
-    type: "event",
+    name: "vote",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
   },
 ] as const;

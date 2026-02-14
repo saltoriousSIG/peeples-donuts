@@ -11,9 +11,10 @@ interface ClaimButtonProps {
 }
 
 export function ClaimButton({ onClaimSuccess }: ClaimButtonProps) {
-  const { sdk } = useFrameContext();
+  const { sdk, fUser } = useFrameContext();
   const { hasClaimableYield, claimableYield, isClaiming, claimYield } = useFlairYield();
   const [showSharePrompt, setShowSharePrompt] = useState(false);
+  const shareEmbed = `${typeof window !== "undefined" ? window.location.origin : "https://peeplesdonuts.com"}/?fid=${fUser?.fid || ""}`;
 
   const handleClaim = async () => {
     await claimYield();
@@ -28,7 +29,7 @@ export function ClaimButton({ onClaimSuccess }: ClaimButtonProps) {
 
     sdk.actions.composeCast({
       text: `Just claimed my yield from Peeples Donuts: ${yieldSummary}! The glazed life is good.`,
-      embeds: ["https://peeplesdonuts.com"],
+      embeds: [shareEmbed],
     });
     setShowSharePrompt(false);
   };

@@ -11,13 +11,6 @@ import { usePins } from "./usePins";
 import { useFlair } from "./useFlair";
 import { useFlairYield } from "./useFlairYield";
 
-// Enable mock mode for UI testing without actual transactions
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_TRANSACTIONS === "true";
-
-// Mock user state - change this to test different UI states
-// Options: "new_user" | "shareholder_no_pin" | "pin_no_flair" | "active_earner" | "yield_ready"
-const MOCK_USER_SEGMENT = (process.env.NEXT_PUBLIC_MOCK_USER_SEGMENT as UserSegment) || "new_user";
-
 // Max time to show loading state before falling back
 const MAX_LOADING_TIME_MS = 5000;
 
@@ -45,84 +38,6 @@ export interface UserState {
 // Check if pin/flair contracts are deployed
 const PIN_CONTRACT_DEPLOYED = !!CONTRACT_ADDRESSES.pin && CONTRACT_ADDRESSES.pin !== "";
 const FLAIR_CONTRACT_DEPLOYED = !!CONTRACT_ADDRESSES.flair && CONTRACT_ADDRESSES.flair !== "";
-
-// Mock state based on segment
-function getMockState(segment: UserSegment): Omit<UserState, "segment"> {
-  switch (segment) {
-    case "new_user":
-      return {
-        hasPin: false,
-        hasShares: false,
-        hasEquippedFlair: false,
-        hasClaimableYield: false,
-        canFuse: false,
-        isLoading: false,
-        shareBalance: 0n,
-        ownedFlairCount: 0,
-        equippedFlairCount: 0,
-      };
-    case "shareholder_no_pin":
-      return {
-        hasPin: false,
-        hasShares: true,
-        hasEquippedFlair: false,
-        hasClaimableYield: false,
-        canFuse: false,
-        isLoading: false,
-        shareBalance: 1000000000000000000n, // 1 share token
-        ownedFlairCount: 0,
-        equippedFlairCount: 0,
-      };
-    case "pin_no_flair":
-      return {
-        hasPin: true,
-        hasShares: true,
-        hasEquippedFlair: false,
-        hasClaimableYield: false,
-        canFuse: false,
-        isLoading: false,
-        shareBalance: 1000000000000000000n,
-        ownedFlairCount: 0,
-        equippedFlairCount: 0,
-      };
-    case "active_earner":
-      return {
-        hasPin: true,
-        hasShares: true,
-        hasEquippedFlair: true,
-        hasClaimableYield: false,
-        canFuse: false,
-        isLoading: false,
-        shareBalance: 1000000000000000000n,
-        ownedFlairCount: 1,
-        equippedFlairCount: 1,
-      };
-    case "yield_ready":
-      return {
-        hasPin: true,
-        hasShares: true,
-        hasEquippedFlair: true,
-        hasClaimableYield: true,
-        canFuse: true,
-        isLoading: false,
-        shareBalance: 5000000000000000000n, // 5 share tokens
-        ownedFlairCount: 3,
-        equippedFlairCount: 2,
-      };
-    default:
-      return {
-        hasPin: false,
-        hasShares: false,
-        hasEquippedFlair: false,
-        hasClaimableYield: false,
-        canFuse: false,
-        isLoading: false,
-        shareBalance: 0n,
-        ownedFlairCount: 0,
-        equippedFlairCount: 0,
-      };
-  }
-}
 
 export function useUserState(): UserState {
   const { address, isConnected } = useAccount();
@@ -159,7 +74,7 @@ export function useUserState(): UserState {
     functionName: "getAddresses",
     chainId: base.id,
     query: {
-      enabled: !!CONTRACT_ADDRESSES.pool && !MOCK_MODE,
+      enabled: !!CONTRACT_ADDRESSES.pool,
     },
   });
 
@@ -171,19 +86,10 @@ export function useUserState(): UserState {
     args: [address ?? zeroAddress],
     chainId: base.id,
     query: {
-      enabled: !!address && !!(addresses as any)?.shareToken && !MOCK_MODE,
+      enabled: !!address && !!(addresses as any)?.shareToken,
       refetchInterval: 10_000,
     },
   });
-
-  // In mock mode, return mock state
-  if (MOCK_MODE) {
-    const mockState = getMockState(MOCK_USER_SEGMENT);
-    return {
-      segment: MOCK_USER_SEGMENT,
-      ...mockState,
-    };
-  }
 
   // Calculate derived state
   const hasShares = useMemo(() => {

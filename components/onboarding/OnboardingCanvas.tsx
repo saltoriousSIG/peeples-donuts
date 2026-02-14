@@ -3,14 +3,16 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { base } from "wagmi/chains";
-import { formatUnits, zeroAddress } from "viem";
+import { formatUnits, parseEther, zeroAddress } from "viem";
 import { getEthPrice } from "@/lib/utils";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { ERC20 } from "@/lib/abi/erc20";
 import { usePool } from "@/providers/PoolProvider";
 import { useOnboardingMint } from "@/hooks/useOnboardingMint";
+import { usePins } from "@/hooks/usePins";
+import { useMinerState } from "@/hooks/useMinerState";
 import { useFrameContext } from "@/providers/FrameSDKProvider";
 import { type FlairTokenData } from "@/lib/flair-data";
 import { PageHeader, type MiniAppContext } from "@/components/page-header";
@@ -30,11 +32,13 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
   const { context: frameContext, isFrameAdded } = useFrameContext();
   const context = frameContext as MiniAppContext | null;
   const [selectedFlair, setSelectedFlair] = useState<FlairTokenData | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<"ETH" | "DONUT">("ETH");
   const [depositAmount, setDepositAmount] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
   const [mintedPinImageUrl, setMintedPinImageUrl] = useState<string>();
 
   const { tvl, state } = usePool();
+  const { hasPin } = usePins();
 
   const { data: ethPrice = 3500 } = useQuery({
     queryKey: ["ethPrice"],
@@ -42,18 +46,32 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
     staleTime: 60000,
   });
 
-  // Get user's WETH balance
-  const { data: wethBalance } = useReadContract({
-    address: CONTRACT_ADDRESSES.weth as `0x${string}`,
-    abi: ERC20,
-    functionName: "balanceOf",
-    args: [address ?? zeroAddress],
-    chainId: base.id,
+  // Batch WETH + DONUT balance reads
+  const { data: balanceBatch } = useReadContracts({
+    contracts: [
+      {
+        address: CONTRACT_ADDRESSES.weth as `0x${string}`,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [address ?? zeroAddress],
+        chainId: base.id,
+      },
+      {
+        address: CONTRACT_ADDRESSES.donut as `0x${string}`,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [address ?? zeroAddress],
+        chainId: base.id,
+      },
+    ],
     query: {
       enabled: !!address,
       refetchInterval: 10_000,
     },
   });
+
+  const wethBalance = balanceBatch?.[0]?.result as bigint | undefined;
+  const donutBalance = balanceBatch?.[1]?.result as bigint | undefined;
 
   const {
     isMinting,
@@ -63,10 +81,14 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
     executeFreeMint,
   } = useOnboardingMint();
 
-  const formattedWethBalance = useMemo(() => {
-    if (!wethBalance) return "0.0000";
-    return parseFloat(formatUnits(wethBalance, 18)).toFixed(4);
-  }, [wethBalance]);
+  const { pinMintPrice, flairMintPrice } = usePins();
+  const { minerState } = useMinerState();
+
+  const formattedBalance = useMemo(() => {
+    const bal = selectedCurrency === "DONUT" ? donutBalance : wethBalance;
+    if (!bal) return "0.0000";
+    return parseFloat(formatUnits(bal, 18)).toFixed(selectedCurrency === "DONUT" ? 0 : 4);
+  }, [wethBalance, donutBalance, selectedCurrency]);
 
   // Calculate TVL in USD
   const tvlUsd = useMemo(() => {
@@ -78,10 +100,12 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
   const canMint = useMemo(() => {
     if (!isConnected) return false;
 
+    // Both modes require flair selection
+    if (!selectedFlair) return false;
+
     if (mode === "free") return true;
 
-    // For paid mode, need flair selection and valid deposit amount
-    if (!selectedFlair) return false;
+    // For paid mode, also need valid deposit amount
     const amount = parseFloat(depositAmount || "0");
     if (amount <= 0) return false;
 
@@ -89,19 +113,26 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
   }, [isConnected, mode, selectedFlair, depositAmount]);
 
   const handleMint = async () => {
+    if (!selectedFlair) return;
+
     if (mode === "free") {
-      const result = await executeFreeMint();
+      const result = await executeFreeMint({
+        flairTokenId: BigInt(selectedFlair.tokenId),
+        currency: selectedCurrency,
+        flairPrice: flairMintPrice ?? 0n,
+      });
       if (result.success) {
         setMintedPinImageUrl(result.pinImageUrl);
         setShowCelebration(true);
       }
     } else {
-      if (!selectedFlair) return;
-
       const result = await executeOnboarding({
         flairTokenId: BigInt(selectedFlair.tokenId),
-        wethAmount: depositAmount,
+        wethAmount: parseEther(depositAmount || "0"),
         gauge: selectedFlair.gauge,
+        currency: selectedCurrency,
+        mintPrice: pinMintPrice ?? 0n,
+        flairPrice: flairMintPrice ?? 0n,
       });
 
       if (result.success) {
@@ -115,6 +146,11 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
     setShowCelebration(false);
     window.location.reload();
   };
+
+  // User already has a pin — don't show onboarding
+  if (hasPin && !showCelebration) {
+    return null;
+  }
 
   return (
     <main className="flex h-screen w-screen justify-center overflow-hidden bg-gradient-to-b from-[#FDF6E3] via-[#FAF0DC] to-[#F5E6C8] text-[#3D2914]">
@@ -220,7 +256,9 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
                   {mode === "paid" && (
                     <div className="text-right">
                       <div className="text-xs text-[#8B7355]">Available</div>
-                      <div className="text-sm font-bold text-[#2D2319]">{formattedWethBalance} WETH</div>
+                      <div className="text-sm font-bold text-[#2D2319]">
+                        {formattedBalance} {selectedCurrency === "DONUT" ? "DONUT" : "WETH"}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -246,29 +284,81 @@ export function OnboardingCanvas({ mode }: OnboardingCanvasProps) {
                     onChange={setDepositAmount}
                     disabled={isMinting}
                     ethPrice={ethPrice}
+                    currency={selectedCurrency}
+                    onCurrencyChange={(c) => { setSelectedCurrency(c); setDepositAmount(""); }}
+                    pinMintPrice={pinMintPrice}
+                    donutPrice={minerState?.donutPrice}
                   />
                 </div>
               </>
             )}
 
-            {/* Free Mode: Simple explanation */}
+            {/* Free Mode: Explanation + Flair picker + Currency toggle */}
             {mode === "free" && (
-              <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.15s' }}>
-                <div className="text-center">
-                  <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#F4A627]" />
-                  <h3 className="text-lg font-bold text-[#2D2319] mb-2">
-                    You&apos;re Already Part of the Family
-                  </h3>
-                  <p className="text-sm text-[#5C4A3D] mb-4">
-                    Your pool shares qualify you for a free membership Pin.
-                    Mint your Pin to unlock Flair and start earning additional yield!
-                  </p>
-                  <div className="flex items-center justify-center gap-2 text-xs text-[#82AD94] font-medium">
-                    <div className="w-2 h-2 rounded-full bg-[#82AD94]" />
-                    No payment required
+              <>
+                <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+                  <div className="text-center">
+                    <Sparkles className="w-10 h-10 mx-auto mb-3 text-[#F4A627]" />
+                    <h3 className="text-lg font-bold text-[#2D2319] mb-2">
+                      You&apos;re Already Part of the Family
+                    </h3>
+                    <p className="text-sm text-[#5C4A3D] mb-4">
+                      Your pool shares qualify you for a free membership Pin.
+                      Choose your Flair below to start earning additional yield!
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-xs text-[#82AD94] font-medium">
+                      <div className="w-2 h-2 rounded-full bg-[#82AD94]" />
+                      Free Pin + Flair purchase
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                <div className="glazed-card p-5 opacity-0 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                  <FlairPicker
+                    onSelect={setSelectedFlair}
+                    selectedFlair={selectedFlair}
+                    disabled={isMinting}
+                  />
+                </div>
+
+                {/* Currency toggle for flair payment */}
+                <div className="glazed-card p-4 opacity-0 animate-slide-up" style={{ animationDelay: '0.25s' }}>
+                  <div className="text-xs font-bold text-[#5C4A3D] uppercase tracking-wider mb-3">
+                    Pay for Flair with
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => !isMinting && setSelectedCurrency("ETH")}
+                      disabled={isMinting}
+                      className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:scale-105 active:scale-95 ${
+                        selectedCurrency === "ETH"
+                          ? "bg-[#627EEA] text-white shadow-md"
+                          : "bg-white/50 text-[#5C4A3D] hover:bg-white/70"
+                      } ${isMinting ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      WETH
+                    </button>
+                    <button
+                      onClick={() => !isMinting && setSelectedCurrency("DONUT")}
+                      disabled={isMinting}
+                      className={`flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:scale-105 active:scale-95 ${
+                        selectedCurrency === "DONUT"
+                          ? "bg-[#D4915D] text-white shadow-md"
+                          : "bg-white/50 text-[#5C4A3D] hover:bg-white/70"
+                      } ${isMinting ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      DONUT
+                    </button>
+                  </div>
+                  {flairMintPrice && (
+                    <div className="mt-2 text-xs text-[#8B7355] text-center">
+                      Flair cost: {selectedCurrency === "DONUT" && minerState?.donutPrice
+                        ? `${Math.ceil(Number(flairMintPrice * 10n**18n / minerState.donutPrice) / 10**18).toLocaleString()} DONUT`
+                        : `${parseFloat(formatUnits(flairMintPrice, 18))} WETH`}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {/* Mint Button Card */}

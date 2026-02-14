@@ -1,16 +1,22 @@
 "use client";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { usePool } from "@/providers/PoolProvider";
 import { formatUnits } from "viem";
+import { PendingClaim as PendingClaimType } from "@/types/pool.type";
 
 interface PendingClaimProps {
   ethPrice: number;
   donutPrice: number;
+  pendingClaim?: PendingClaimType;
+  claim: () => Promise<void>;
 }
 
-export function PendingClaim({ ethPrice, donutPrice }: PendingClaimProps) {
-  const { pendingClaim, claim } = usePool();
-
+export const PendingClaim = React.memo(function PendingClaim({
+  ethPrice,
+  donutPrice,
+  pendingClaim,
+  claim,
+}: PendingClaimProps) {
   if (!pendingClaim) {
     return null;
   }
@@ -72,7 +78,4 @@ export function PendingClaim({ ethPrice, donutPrice }: PendingClaimProps) {
       </div>
     </div>
   );
-}
-
-//
-//
+});

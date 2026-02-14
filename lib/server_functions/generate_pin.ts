@@ -13,10 +13,9 @@ const generate_pin = async (fid: number) => {
     return {
       imageUrl: data.imageUrl,
       pinataUrl: data.pinataUrl,
-      cid: data.pinataCid
+      cid: data.cid
     };
   } catch (e) {
-    console.log(e)
     throw new Error("Failed to generate PIN");
   }
 };

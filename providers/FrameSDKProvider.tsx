@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useEffect, useState, useContext, useCallback } from "react";
+import { createContext, useEffect, useState, useContext, useCallback, useRef } from "react";
 import sdk from "@farcaster/miniapp-sdk";
 import { MiniAppSDK } from "@farcaster/miniapp-sdk/dist/types";
 import { useAccount, useConnect } from "wagmi";
@@ -58,35 +58,26 @@ export function FrameSDKProvider({ children }: { children: React.ReactNode }) {
         }
     }, [errors]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            sdk.actions.ready();
-        }, 1200);
+    const connectRef = useRef({ connect, connectors });
+    connectRef.current = { connect, connectors };
 
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        if (connectors && connectors.length > 0) {
-            connect({
-                connector: connectors[0]
-            });
-        }
-    }, [connect, connectors]);
-
-    // Load context
+    // Load context, then signal ready + connect wallet
     useEffect(() => {
         let cancelled = false;
 
         const load = async () => {
             try {
-                const context = await sdk.context;
+                const ctx = await sdk.context;
                 if (!cancelled) {
-                    setContext(context);
-                    setFUser({
-                        ...context.user,
-                    });
-                    setIsframeAdded(context.client.added);
+                    setContext(ctx);
+                    setFUser({ ...ctx.user });
+                    setIsframeAdded(ctx.client.added);
+
+                    sdk.actions.ready();
+                    const { connect: c, connectors: conns } = connectRef.current;
+                    if (conns && conns.length > 0) {
+                        c({ connector: conns[0] });
+                    }
                 }
             } catch (e: any) {
                 if (!cancelled) {

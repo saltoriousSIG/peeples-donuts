@@ -5,21 +5,20 @@ import { useFlair, FlairItem } from "@/hooks/useFlair";
 import {
   RARITY_ICONS,
   RARITIES,
-  GAUGE_ICONS,
   getTokenById,
   getFlairImagePath,
   type Rarity,
 } from "@/lib/flair-data";
 import { Sparkles, ArrowRight, Zap, FlaskConical, AlertCircle } from "lucide-react";
-import { useReadContract, useAccount } from "wagmi";
+import { useReadContracts, useAccount } from "wagmi";
 import { base } from "wagmi/chains";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { DATA } from "@/lib/abi/data";
 import { ERC20 } from "@/lib/abi/erc20";
-import { formatUnits, zeroAddress, parseUnits } from "viem";
+import { formatUnits, zeroAddress } from "viem";
 import { toast } from "sonner";
 
-// DONUT cost for fusion (fallback values)
+// PEEPLES cost for fusion (fallback values)
 const FALLBACK_FUSION_COSTS: Record<Rarity, number> = {
   Bronze: 100,
   Silver: 500,
@@ -32,55 +31,52 @@ export const FlairFusion: React.FC = () => {
   const { ownedFlair, fuseFlair, isFusing } = useFlair();
   const [selectedFlair, setSelectedFlair] = useState<FlairItem | null>(null);
 
-  // Fetch user's DONUT balance
-  const { data: donutBalance } = useReadContract({
-    address: CONTRACT_ADDRESSES.donut as `0x${string}`,
-    abi: ERC20,
-    functionName: "balanceOf",
-    args: [address ?? zeroAddress],
-    chainId: base.id,
+  // Batch PEEPLES balance + fusion costs into a single multicall
+  const { data: fusionBatch } = useReadContracts({
+    contracts: [
+      // [0] PEEPLES balance
+      {
+        address: CONTRACT_ADDRESSES.peeples as `0x${string}`,
+        abi: ERC20,
+        functionName: "balanceOf",
+        args: [address ?? zeroAddress],
+        chainId: base.id,
+      },
+      // [1] Bronze fusion cost
+      {
+        address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+        abi: DATA,
+        functionName: "getRarityFusionCost",
+        args: [0],
+        chainId: base.id,
+      },
+      // [2] Silver fusion cost
+      {
+        address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+        abi: DATA,
+        functionName: "getRarityFusionCost",
+        args: [1],
+        chainId: base.id,
+      },
+      // [3] Gold fusion cost
+      {
+        address: CONTRACT_ADDRESSES.pool as `0x${string}`,
+        abi: DATA,
+        functionName: "getRarityFusionCost",
+        args: [2],
+        chainId: base.id,
+      },
+    ],
     query: {
-      enabled: !!address,
+      enabled: !!address && !!CONTRACT_ADDRESSES.pool,
       refetchInterval: 10_000,
     },
   });
 
-  // Fetch fusion costs from contract for each rarity
-  const { data: bronzeCostData } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: DATA,
-    functionName: "getRarityFusionCost",
-    args: [0], // 0 = Bronze (COMMON)
-    chainId: base.id,
-    query: {
-      enabled: !!CONTRACT_ADDRESSES.pool,
-      refetchInterval: 30_000,
-    },
-  });
-
-  const { data: silverCostData } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: DATA,
-    functionName: "getRarityFusionCost",
-    args: [1], // 1 = Silver (UNCOMMON)
-    chainId: base.id,
-    query: {
-      enabled: !!CONTRACT_ADDRESSES.pool,
-      refetchInterval: 30_000,
-    },
-  });
-
-  const { data: goldCostData } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: DATA,
-    functionName: "getRarityFusionCost",
-    args: [2], // 2 = Gold (RARE)
-    chainId: base.id,
-    query: {
-      enabled: !!CONTRACT_ADDRESSES.pool,
-      refetchInterval: 30_000,
-    },
-  });
+  const peeplesBalance = fusionBatch?.[0]?.result as bigint | undefined;
+  const bronzeCostData = fusionBatch?.[1]?.result as bigint | undefined;
+  const silverCostData = fusionBatch?.[2]?.result as bigint | undefined;
+  const goldCostData = fusionBatch?.[3]?.result as bigint | undefined;
 
   // Parse fusion costs or use fallbacks
   const fusionCosts = useMemo((): Record<Rarity, number> => {
@@ -111,6 +107,18 @@ export const FlairFusion: React.FC = () => {
     return RARITIES[currentIndex + 1];
   };
 
+  const selectedRarity = (selectedFlair?.rarity as Rarity) || "Bronze";
+  const nextRarity = selectedFlair ? getNextRarity(selectedFlair.rarity) : null;
+  const fusionCost = selectedFlair ? fusionCosts[selectedRarity] : 0;
+
+  // Raw bigint costs for token approval
+  const fusionCostsRaw: Record<Rarity, bigint> = useMemo(() => ({
+    Bronze: bronzeCostData ?? 0n,
+    Silver: silverCostData ?? 0n,
+    Gold: goldCostData ?? 0n,
+    Platinum: 0n,
+  }), [bronzeCostData, silverCostData, goldCostData]);
+
   const handleFuse = async () => {
     if (!selectedFlair) return;
 
@@ -124,7 +132,7 @@ export const FlairFusion: React.FC = () => {
     const newWeight = nextRarity === "Silver" ? 2 : nextRarity === "Gold" ? 4 : nextRarity === "Platinum" ? 8 : 1;
 
     try {
-      await fuseFlair(selectedFlair.tokenId);
+      await fuseFlair(selectedFlair.tokenId, fusionCostsRaw[selectedRarity]);
 
       // Success feedback with before/after stats
       toast.success(`Flair upgraded to ${nextRarity}!`, {
@@ -137,10 +145,6 @@ export const FlairFusion: React.FC = () => {
     }
   };
 
-  const selectedRarity = (selectedFlair?.rarity as Rarity) || "Bronze";
-  const nextRarity = selectedFlair ? getNextRarity(selectedFlair.rarity) : null;
-  const fusionCost = selectedFlair ? fusionCosts[selectedRarity] : 0;
-
   // Validation: Check if user has enough flair of same type to fuse
   const canFuse = useMemo(() => {
     if (!selectedFlair) return { valid: false, reason: "" };
@@ -150,29 +154,26 @@ export const FlairFusion: React.FC = () => {
       return { valid: false, reason: "Platinum is the highest rarity" };
     }
 
-    // Count how many of the same gauge + rarity the user owns
-    const sameTypeCount = ownedFlair.filter(
-      (f) => f.gauge === selectedFlair.gauge && f.rarity === selectedFlair.rarity
-    ).length;
-
-    if (sameTypeCount < 2) {
+    // Need at least 2 copies in wallet (equipped copy is held by pool, can't fuse it)
+    if (selectedFlair.balance < 2n) {
+      const walletCount = Number(selectedFlair.balance);
       return {
         valid: false,
-        reason: `You need 2 ${selectedFlair.gauge} ${selectedFlair.rarity} flair to fuse`,
+        reason: `You need 2 ${selectedFlair.gauge} ${selectedFlair.rarity} in your wallet to fuse (have ${walletCount})`,
       };
     }
 
-    // Check DONUT balance
-    const userDonutBalance = donutBalance ? Number(formatUnits(donutBalance as bigint, 18)) : 0;
-    if (userDonutBalance < fusionCost) {
+    // Check PEEPLES balance
+    const userPeeplesBalance = peeplesBalance ? Number(formatUnits(peeplesBalance as bigint, 18)) : 0;
+    if (userPeeplesBalance < fusionCost) {
       return {
         valid: false,
-        reason: `Insufficient DONUT (need ${fusionCost}, have ${userDonutBalance.toFixed(2)})`,
+        reason: `Insufficient PEEPLES (need ${fusionCost}, have ${userPeeplesBalance.toFixed(2)})`,
       };
     }
 
     return { valid: true, reason: "" };
-  }, [selectedFlair, ownedFlair, fusionCost, donutBalance]);
+  }, [selectedFlair, ownedFlair, fusionCost, peeplesBalance]);
 
   const getRarityGlow = (rarity: Rarity) => {
     switch (rarity) {
@@ -227,13 +228,19 @@ export const FlairFusion: React.FC = () => {
                   <button
                     key={flair.id}
                     onClick={() => setSelectedFlair(flair)}
-                    className={`glazed-card glazed-card-interactive p-2 animate-scale-in ${
+                    className={`glazed-card glazed-card-interactive p-2 animate-scale-in relative ${
                       selectedFlair?.id === flair.id
                         ? `ring-2 ring-[#B48EF7] ${getRarityGlow(rarity)}`
                         : ""
                     }`}
                     style={{ animationDelay: `${index * 0.05}s` }}
                   >
+                    {/* Wallet balance badge */}
+                    {flair.balance > 1n && (
+                      <div className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 rounded-full bg-[#3D2914] flex items-center justify-center shadow-sm">
+                        <span className="text-[8px] font-bold text-white">x{Number(flair.balance)}</span>
+                      </div>
+                    )}
                     {tokenData && (
                       <div className="w-8 h-8 mx-auto mb-1">
                         <img
@@ -314,9 +321,8 @@ export const FlairFusion: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#5C4A3D]">Fusion Cost</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">🍩</span>
                     <span className="text-lg font-bold text-[#2D2319]">
-                      {fusionCost} DONUT
+                      {fusionCost} PEEPLES
                     </span>
                   </div>
                 </div>
@@ -379,7 +385,7 @@ export const FlairFusion: React.FC = () => {
 
       <div className="mt-4 pt-4 border-t border-[#2D2319]/10">
         <p className="text-[10px] text-[#A89485] text-center">
-          Fuse 2 lower tier flairs + DONUT to upgrade: Bronze → Silver → Gold → Platinum
+          Fuse 2 lower tier flairs + PEEPLES to upgrade: Bronze → Silver → Gold → Platinum
         </p>
       </div>
     </div>

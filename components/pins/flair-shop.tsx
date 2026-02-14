@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useFlair } from "@/hooks/useFlair";
+import { usePins } from "@/hooks/usePins";
+import { useMinerState } from "@/hooks/useMinerState";
 import {
   FLAIR_TOKENS,
   RARITY_ICONS,
@@ -9,50 +11,33 @@ import {
   type Rarity,
   type FlairTokenData,
 } from "@/lib/flair-data";
+import { getPaymentAmount } from "@/lib/token-utils";
 import { Zap, ShoppingCart } from "lucide-react";
-import { useReadContract } from "wagmi";
-import { base } from "wagmi/chains";
-import { CONTRACT_ADDRESSES } from "@/lib/contracts";
-import { DATA } from "@/lib/abi/data";
-
-// Fallback price (in PEEPLES) if contract not available
-const FALLBACK_BRONZE_PRICE = 1000n * 10n ** 18n;
+import { formatUnits } from "viem";
 
 export const FlairShop: React.FC = () => {
   const [purchasingTokenId, setPurchasingTokenId] = useState<number | null>(null);
+  const [useDonut, setUseDonut] = useState(false);
   const { buyFlair, isBuying } = useFlair();
+  const { flairMintPrice } = usePins();
+  const { minerState } = useMinerState();
 
-  // Fetch flair mint price from contract
-  const { data: bronzePriceData } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: DATA,
-    functionName: "getFlairMintPrice",
-    chainId: base.id,
-    query: {
-      enabled: !!CONTRACT_ADDRESSES.pool,
-      refetchInterval: 30_000,
-    },
-  });
-
-  // Parse price or use fallback
-  const bronzePrice = useMemo(() => {
-    if (bronzePriceData && typeof bronzePriceData === "bigint") {
-      return bronzePriceData;
-    }
-    return FALLBACK_BRONZE_PRICE;
-  }, [bronzePriceData]);
+  const bronzePrice = flairMintPrice ?? 0n;
 
   // Get all Bronze tier flair (one per gauge)
   const bronzeTokens = FLAIR_TOKENS.filter((t) => t.rarity === "Bronze");
 
   const handleBuy = async (token: FlairTokenData) => {
     setPurchasingTokenId(token.tokenId);
-    await buyFlair(BigInt(token.tokenId), bronzePrice);
+    const approvalAmount = getPaymentAmount(bronzePrice, useDonut, minerState?.donutPrice);
+    await buyFlair(BigInt(token.tokenId), approvalAmount, useDonut);
     setPurchasingTokenId(null);
   };
 
   const formatPrice = () => {
-    return (Number(bronzePrice) / 10 ** 18).toLocaleString();
+    const amount = getPaymentAmount(bronzePrice, useDonut, minerState?.donutPrice);
+    const label = useDonut ? "DONUT" : "WETH";
+    return `${parseFloat(formatUnits(amount, 18)).toLocaleString()} ${label}`;
   };
 
   const getRarityGlow = (rarity: Rarity) => {
@@ -67,10 +52,31 @@ export const FlairShop: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      {/* Price header */}
+      {/* Payment toggle + price */}
       <div className="flex items-center justify-between px-1">
-        <span className="text-xs text-[#8B7355]">Bronze flair</span>
-        <span className="text-xs font-bold text-[#3D2914]">{formatPrice()} PEEPLES each</span>
+        <div className="flex items-center gap-1.5 p-0.5 bg-white/50 rounded-lg">
+          <button
+            onClick={() => setUseDonut(false)}
+            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+              !useDonut
+                ? "bg-[#3D2914] text-white shadow-sm"
+                : "text-[#8B7355] hover:bg-white/60"
+            }`}
+          >
+            WETH
+          </button>
+          <button
+            onClick={() => setUseDonut(true)}
+            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+              useDonut
+                ? "bg-[#3D2914] text-white shadow-sm"
+                : "text-[#8B7355] hover:bg-white/60"
+            }`}
+          >
+            DONUT
+          </button>
+        </div>
+        <span className="text-xs font-bold text-[#3D2914]">{formatPrice()} each</span>
       </div>
 
       {/* Flair grid */}

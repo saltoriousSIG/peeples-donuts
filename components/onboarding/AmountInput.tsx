@@ -1,50 +1,73 @@
 "use client";
 
 import { useMemo } from "react";
-import { useReadContract } from "wagmi";
-import { base } from "wagmi/chains";
 import { formatUnits } from "viem";
 import { cn } from "@/lib/utils";
-import { CONTRACT_ADDRESSES } from "@/lib/contracts";
-import { DATA } from "@/lib/abi/data";
 
 interface AmountInputProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   ethPrice?: number;
+  currency?: "ETH" | "DONUT";
+  onCurrencyChange?: (currency: "ETH" | "DONUT") => void;
+  pinMintPrice?: bigint;
+  donutPrice?: bigint;
 }
 
-export function AmountInput({ value, onChange, disabled, ethPrice = 3500 }: AmountInputProps) {
-  // Get pool config to know minimum deposit
-  const { data: config } = useReadContract({
-    address: CONTRACT_ADDRESSES.pool as `0x${string}`,
-    abi: DATA,
-    functionName: "getConfig",
-    chainId: base.id,
-  });
+export function AmountInput({
+  value,
+  onChange,
+  disabled,
+  ethPrice = 3500,
+  currency = "ETH",
+  onCurrencyChange,
+  pinMintPrice,
+  donutPrice,
+}: AmountInputProps) {
+  const isDonut = currency === "DONUT";
 
-  const minDeposit = useMemo(() => {
-    if (!config) return 0.001; // Default minimum
-    return parseFloat(formatUnits((config as any).minDeposit || 0n, 18));
-  }, [config]);
+  const mintPriceEth = pinMintPrice ? parseFloat(formatUnits(pinMintPrice, 18)) : 0.01;
+  const donutPriceEth = donutPrice ? parseFloat(formatUnits(donutPrice, 18)) : 0;
+
+  // Value is always in ETH — display converts to DONUT
+  const displayValue = useMemo(() => {
+    if (isDonut && donutPriceEth > 0) {
+      const ethVal = parseFloat(value || "0");
+      return Math.ceil(ethVal / donutPriceEth).toString();
+    }
+    return value;
+  }, [value, isDonut, donutPriceEth]);
+
+  const minDepositDisplay = useMemo(() => {
+    if (isDonut && donutPriceEth > 0) {
+      return Math.ceil(mintPriceEth / donutPriceEth);
+    }
+    return mintPriceEth;
+  }, [isDonut, mintPriceEth, donutPriceEth]);
 
   const usdValue = useMemo(() => {
-    const ethValue = parseFloat(value || "0");
-    return (ethValue * ethPrice).toFixed(2);
+    const numValue = parseFloat(value || "0");
+    return (numValue * ethPrice).toFixed(2);
   }, [value, ethPrice]);
 
   const isValid = useMemo(() => {
-    const ethValue = parseFloat(value || "0");
-    return ethValue >= minDeposit;
-  }, [value, minDeposit]);
+    const numValue = parseFloat(value || "0");
+    return numValue >= mintPriceEth;
+  }, [value, mintPriceEth]);
 
-  const presetAmounts = [
-    { label: "Min", value: minDeposit.toString() },
-    { label: "0.01", value: "0.01" },
-    { label: "0.05", value: "0.05" },
-    { label: "0.1", value: "0.1" },
-  ];
+  // Presets always store ETH values, display converts to DONUT
+  const presetAmounts = useMemo(() => {
+    const base = mintPriceEth;
+    const ethPresets = [base, base * 2.5, base * 5, base * 10];
+    return ethPresets.map(v => {
+      const ethStr = v.toFixed(4);
+      const label = isDonut && donutPriceEth > 0
+        ? Math.ceil(v / donutPriceEth).toLocaleString()
+        : ethStr;
+      return { label, value: ethStr };
+    });
+  }, [isDonut, donutPriceEth, mintPriceEth]);
 
   return (
     <div className="space-y-3">
@@ -53,24 +76,66 @@ export function AmountInput({ value, onChange, disabled, ethPrice = 3500 }: Amou
           Deposit Amount
         </div>
         <div className="text-[10px] text-[#8B7355]">
-          Min: {minDeposit.toFixed(4)} WETH
+          Min: {isDonut ? `${minDepositDisplay.toLocaleString()} DONUT` : `${mintPriceEth} ETH`}
         </div>
       </div>
 
-      {/* Main input */}
+      {/* Currency toggle */}
+      {onCurrencyChange && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => !disabled && onCurrencyChange("ETH")}
+            disabled={disabled}
+            className={cn(
+              "flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all",
+              "hover:scale-105 active:scale-95",
+              !isDonut
+                ? "bg-[#627EEA] text-white shadow-md"
+                : "bg-white/50 text-[#5C4A3D] hover:bg-white/70",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            ETH
+          </button>
+          <button
+            onClick={() => !disabled && onCurrencyChange("DONUT")}
+            disabled={disabled}
+            className={cn(
+              "flex-1 px-3 py-2 rounded-xl text-xs font-bold transition-all",
+              "hover:scale-105 active:scale-95",
+              isDonut
+                ? "bg-[#D4915D] text-white shadow-md"
+                : "bg-white/50 text-[#5C4A3D] hover:bg-white/70",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            DONUT
+          </button>
+        </div>
+      )}
+
+      {/* Main input — value always in ETH, display shows DONUT equivalent */}
       <div className="relative">
         <input
           type="number"
-          step="0.001"
-          min={minDeposit}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          step={isDonut ? "1" : "0.001"}
+          min={isDonut ? minDepositDisplay : mintPriceEth}
+          value={isDonut ? displayValue : value}
+          onChange={(e) => {
+            if (isDonut && donutPriceEth > 0) {
+              // User types DONUT amount, convert to ETH for storage
+              const donutAmt = parseFloat(e.target.value || "0");
+              onChange((donutAmt * donutPriceEth).toFixed(18));
+            } else {
+              onChange(e.target.value);
+            }
+          }}
           disabled={disabled}
-          placeholder={minDeposit.toFixed(4)}
+          placeholder={isDonut ? String(minDepositDisplay) : String(mintPriceEth)}
           className={cn(
             "w-full bg-white/70 text-[#2D2319] border-2 rounded-xl px-4 py-4 text-2xl font-bold",
             "placeholder:text-[#A89485]/50 focus:outline-none transition-all",
-            "pr-20",
+            "pr-24",
             !isValid && value
               ? "border-[#E85A71]/50 focus:border-[#E85A71]"
               : "border-transparent focus:border-[#82AD94]",
@@ -78,7 +143,7 @@ export function AmountInput({ value, onChange, disabled, ethPrice = 3500 }: Amou
           )}
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-end">
-          <span className="text-sm font-bold text-[#5C4A3D]">WETH</span>
+          <span className="text-sm font-bold text-[#5C4A3D]">{isDonut ? "DONUT" : "ETH"}</span>
           <span className="text-[10px] text-[#8B7355]">~${usdValue}</span>
         </div>
       </div>
@@ -86,7 +151,7 @@ export function AmountInput({ value, onChange, disabled, ethPrice = 3500 }: Amou
       {/* Validation message */}
       {!isValid && value && (
         <p className="text-xs text-[#E85A71]">
-          Minimum deposit is {minDeposit.toFixed(4)} WETH
+          Minimum deposit is {isDonut ? `${minDepositDisplay.toLocaleString()} DONUT` : `${mintPriceEth} ETH`}
         </p>
       )}
 
@@ -106,14 +171,16 @@ export function AmountInput({ value, onChange, disabled, ethPrice = 3500 }: Amou
               disabled && "opacity-50 cursor-not-allowed"
             )}
           >
-            {preset.label === "Min" ? `${minDeposit.toFixed(3)}` : preset.label}
+            {preset.label}
           </button>
         ))}
       </div>
 
-      {/* Info text */}
+      {/* Pool shares explanation */}
       <p className="text-[10px] text-[#8B7355] text-center">
-        Your deposit earns pool rewards + flair yield
+        {isDonut
+          ? "Deposit more DONUT to earn more pool shares and rewards!"
+          : `Deposit more than ${mintPriceEth} ETH to earn more pool shares and rewards!`}
       </p>
     </div>
   );

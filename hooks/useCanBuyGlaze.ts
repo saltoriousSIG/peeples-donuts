@@ -1,28 +1,17 @@
-import { useReadContract, useAccount } from "wagmi";
+import { useReadContract } from "wagmi";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
-import { MULTICALL_ABI } from "@/lib/abi/multicall";
 import { ERC20 } from "@/lib/abi/erc20";
 import { base } from "wagmi/chains";
-import { zeroAddress } from "viem";
 import { usePool } from "../providers/PoolProvider";
 import { formatUnits } from "viem";
 import { getBreakevenThreshold } from "@/lib/utils";
+import { useMinerState } from "./useMinerState";
 
 export const useCanBuyGlaze = () => {
   const { config } = usePool();
-  const { address } = useAccount();
-  const { data: rawMinerState, refetch: refetchMinerState } = useReadContract({
-    address: CONTRACT_ADDRESSES.multicall,
-    abi: MULTICALL_ABI,
-    functionName: "getMiner",
-    args: [address ?? zeroAddress],
-    chainId: base.id,
-    query: {
-      refetchInterval: 3_000,
-    },
-  });
+  const { minerState: rawMinerState } = useMinerState();
 
-  const { data: poolWETHBalance, refetch: refetchPoolWETHBalance } =
+  const { data: poolWETHBalance } =
     useReadContract({
       address: CONTRACT_ADDRESSES.weth,
       abi: ERC20,
@@ -30,7 +19,7 @@ export const useCanBuyGlaze = () => {
       args: [CONTRACT_ADDRESSES.pool],
       chainId: base.id,
       query: {
-        refetchInterval: 5_000,
+        refetchInterval: 15_000,
       },
     });
 

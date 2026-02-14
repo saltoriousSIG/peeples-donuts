@@ -4,7 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { usePins } from "@/hooks/usePins";
 import { useFlair, FlairItem } from "@/hooks/useFlair";
-import { GAUGE_ICONS, type Rarity } from "@/lib/flair-data";
+import { getFlairImagePath, getTokenById, type Rarity } from "@/lib/flair-data";
 import { Sparkles, ArrowRight, Lock } from "lucide-react";
 
 export const PinFlairSummary: React.FC = () => {
@@ -25,21 +25,26 @@ export const PinFlairSummary: React.FC = () => {
   };
 
   // Flair slot component
-  const FlairSlot = ({ flair, index }: { flair?: FlairItem | null; index: number }) => (
-    <div
-      className={`flair-slot w-10 h-10 ${
-        flair ? `${getRarityGlow(flair.rarity as Rarity)} flair-slot-filled` : ""
-      }`}
-    >
-      {flair ? (
-        <span className="text-lg" title={`${flair.gauge} ${flair.rarity}`}>
-          {GAUGE_ICONS[flair.gauge]}
-        </span>
-      ) : (
-        <span className="text-[#A89485] text-xs font-bold">{index + 1}</span>
-      )}
-    </div>
-  );
+  const FlairSlot = ({ flair, index }: { flair?: FlairItem | null; index: number }) => {
+    const tokenData = flair ? getTokenById(Number(flair.tokenId)) : null;
+    return (
+      <div
+        className={`flair-slot w-10 h-10 ${
+          flair ? `${getRarityGlow(flair.rarity as Rarity)} flair-slot-filled` : ""
+        }`}
+      >
+        {flair && tokenData ? (
+          <img
+            src={getFlairImagePath(tokenData.gauge, flair.rarity as Rarity)}
+            alt={`${flair.gauge} ${flair.rarity}`}
+            className="w-8 h-8 object-contain"
+          />
+        ) : (
+          <span className="text-[#A89485] text-xs font-bold">{index + 1}</span>
+        )}
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (

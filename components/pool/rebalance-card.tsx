@@ -10,7 +10,7 @@ import { formatUnits } from "viem";
 import { toast } from "sonner";
 import useContract, { ExecutionType } from "@/hooks/useContract";
 
-export const RebalanceCard: React.FC = () => {
+export const RebalanceCard: React.FC = React.memo(function RebalanceCard() {
   const { address, isConnected } = useAccount();
   const [isRebalancing, setIsRebalancing] = useState(false);
 
@@ -23,29 +23,39 @@ export const RebalanceCard: React.FC = () => {
     chainId: base.id,
     query: {
       enabled: !!CONTRACT_ADDRESSES.pool,
-      refetchInterval: 10_000,
+      refetchInterval: 30_000,
     },
   });
 
   // Contract execution hook - adjust function name if needed (could be "checkAndFinalize" or "rebalance")
   const executeRebalance = useContract(ExecutionType.WRITABLE, "Manage", "rebalance");
 
-  // Parse rebalance info
+  // Parse rebalance info (struct with named properties)
   const rebalanceData = React.useMemo(() => {
-    if (!rebalanceInfo || !Array.isArray(rebalanceInfo)) {
+    if (!rebalanceInfo) {
       return {
         thresholdBps: 0,
         lastRebalanceTime: 0,
         lastRebalancer: "0x0",
         lastDonutSwapped: 0,
+        lastWethBought: 0,
       };
     }
 
+    const info = rebalanceInfo as {
+      thresholdBps: bigint;
+      lastRebalanceTime: bigint;
+      lastRebalancer: string;
+      lastDonutSwapped: bigint;
+      lastWethBought: bigint;
+    };
+
     return {
-      thresholdBps: Number(rebalanceInfo[0]) / 100, // Convert basis points to percentage
-      lastRebalanceTime: Number(rebalanceInfo[1]),
-      lastRebalancer: rebalanceInfo[2] as string,
-      lastDonutSwapped: parseFloat(formatUnits(rebalanceInfo[3] as bigint, 18)),
+      thresholdBps: Number(info.thresholdBps) / 100, // Convert basis points to percentage
+      lastRebalanceTime: Number(info.lastRebalanceTime),
+      lastRebalancer: info.lastRebalancer,
+      lastDonutSwapped: parseFloat(formatUnits(info.lastDonutSwapped, 18)),
+      lastWethBought: parseFloat(formatUnits(info.lastWethBought, 18)),
     };
   }, [rebalanceInfo]);
 
@@ -208,4 +218,4 @@ export const RebalanceCard: React.FC = () => {
       </div>
     </div>
   );
-};
+});

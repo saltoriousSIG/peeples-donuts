@@ -6,8 +6,7 @@ export const CONTRACT_ADDRESSES = {
   multicall: "0x3ec144554b484C6798A683E34c8e8E222293f323",
   provider: "0x463B1E8E78B28027b423Ea6f00695f01a84EFe72",
   pool: "0xa1B7E146fE49FAC1622670467465d3ea6d801004",
-  peeples_blazery: "0x4Dbd0ea742CBb8331F4B2b1e9390B80C64126C7c",
-  // Separate token contracts (placeholder addresses - to be updated when deployed)
-  pin: "", // Pin ERC721 contract (soulbound)
-  flair: "", // Flair ERC1155 contract
+  peeples_blazery: "0x9c52024fbC2002CDC7218004fF2a8362d1C7030e",
+  pin: "0xffBD93B0f81354C1423588376d4f7c67438615Fb", // Pin ERC721 contract (soulbound)
+  flair: "0x5d913CCcf0A04aC036a08A915822c9F11fe75aCf", // Flair ERC1155 contract
 } as const;
