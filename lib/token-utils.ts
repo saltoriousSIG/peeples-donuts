@@ -30,9 +30,12 @@ export function getPaymentAmount(
   useDonut: boolean,
   donutPrice?: bigint
 ): bigint {
+  console.log(wethPrice, useDonut, donutPrice, "params");
   if (!useDonut) return wethPrice;
   if (!donutPrice || donutPrice === 0n) return wethPrice;
-  return wethToDonut(wethPrice, donutPrice) + 100n;
+  const amtDonut =  wethToDonut(wethPrice, donutPrice);
+  const buffer = amtDonut / 1000n; // Add 1% buffer to account for price fluctuations
+  return amtDonut + buffer;
 }
 
 /**
@@ -52,6 +55,8 @@ export async function ensureTokenApproval(
     functionName: "allowance",
     args: [owner, spender],
   }) as bigint;
+  console.log(currentAllowance, "allowance");
+  console.log(amount, "amount to approve");
 
   if (currentAllowance >= amount) return false;
 

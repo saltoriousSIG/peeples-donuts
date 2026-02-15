@@ -178,7 +178,7 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
         setMintStep("idle");
       }
     },
-    [address, isConnected, fUser, mintStep]
+    [address, isConnected, fUser, mintStep, minerState]
   );
 
   // Execute free mint for existing shareholders (free pin + paid flair)
@@ -208,6 +208,7 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
       const poolAddress = CONTRACT_ADDRESSES.pool as `0x${string}`;
       setIsMinting(true);
       setMintProgress(0);
+
 
       const approvalAmount = getPaymentAmount(options.flairPrice, isDonut, minerState?.donutPrice);
       try {
@@ -294,7 +295,7 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
         setMintStep("idle");
       }
     },
-    [address, isConnected, fUser, mintStep]
+    [address, isConnected, fUser, mintStep, minerState]
   );
 
   return {
