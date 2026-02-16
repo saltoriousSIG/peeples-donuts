@@ -1,4 +1,8 @@
-import { readContract, writeContract, waitForTransactionReceipt } from "@wagmi/core";
+import {
+  readContract,
+  writeContract,
+  waitForTransactionReceipt,
+} from "@wagmi/core";
 import { wagmiConfig } from "@/lib/wagmi";
 import { CONTRACT_ADDRESSES } from "@/lib/contracts";
 import { ERC20 } from "@/lib/abi/erc20";
@@ -8,7 +12,9 @@ import { toast } from "sonner";
  * Resolves the token contract address based on payment method.
  */
 export function getPaymentTokenAddress(useDonut: boolean): `0x${string}` {
-  return (useDonut ? CONTRACT_ADDRESSES.donut : CONTRACT_ADDRESSES.weth) as `0x${string}`;
+  return (
+    useDonut ? CONTRACT_ADDRESSES.donut : CONTRACT_ADDRESSES.weth
+  ) as `0x${string}`;
 }
 
 /**
@@ -28,12 +34,11 @@ export function wethToDonut(wethAmount: bigint, donutPrice: bigint): bigint {
 export function getPaymentAmount(
   wethPrice: bigint,
   useDonut: boolean,
-  donutPrice?: bigint
+  donutPrice?: bigint,
 ): bigint {
-  console.log(wethPrice, useDonut, donutPrice, "params");
   if (!useDonut) return wethPrice;
   if (!donutPrice || donutPrice === 0n) return wethPrice;
-  const amtDonut =  wethToDonut(wethPrice, donutPrice);
+  const amtDonut = wethToDonut(wethPrice, donutPrice);
   const buffer = amtDonut / 1000n; // Add 1% buffer to account for price fluctuations
   return amtDonut + buffer;
 }
@@ -47,16 +52,14 @@ export async function ensureTokenApproval(
   tokenAddress: `0x${string}`,
   spender: `0x${string}`,
   amount: bigint,
-  tokenName: string
+  tokenName: string,
 ): Promise<boolean> {
-  const currentAllowance = await readContract(wagmiConfig as any, {
+  const currentAllowance = (await readContract(wagmiConfig as any, {
     abi: ERC20,
     address: tokenAddress,
     functionName: "allowance",
     args: [owner, spender],
-  }) as bigint;
-  console.log(currentAllowance, "allowance");
-  console.log(amount, "amount to approve");
+  })) as bigint;
 
   if (currentAllowance >= amount) return false;
 
@@ -67,7 +70,10 @@ export async function ensureTokenApproval(
     functionName: "approve",
     args: [spender, amount],
   });
-  await waitForTransactionReceipt(wagmiConfig as any, { hash: approveHash, confirmations: 2 });
+  await waitForTransactionReceipt(wagmiConfig as any, {
+    hash: approveHash,
+    confirmations: 2,
+  });
   toast.success(`${tokenName} approved!`);
   return true;
 }

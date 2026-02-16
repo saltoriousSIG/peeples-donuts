@@ -317,7 +317,6 @@ export function PinApp({ initialModal = null }: PinAppProps) {
           <div className="flex justify-center gap-3 mb-5">
             {[0, 1, 2].map((slotIndex) => {
               const flair = equippedFlair[slotIndex];
-              console.log(flair);
               const isEmpty = !flair;
 
               return (
