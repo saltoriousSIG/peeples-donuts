@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       const glazePrice = parseFloat(formatUnits(minerState?.price ?? 0n, 18));
       const poolWeth = parseFloat(formatUnits(poolWETHBalance ?? 0n, 18));
       const donutPrice = parseFloat(
-        formatUnits(minerState?.donutPrice ?? 0n, 18)
+        formatUnits(minerState?.donutPrice ?? 0n, 18),
       );
       const dps = parseFloat(formatUnits(minerState?.dps ?? 0n, 18));
       const strategy = poolConfig.strategy;
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
       const targetBreakEven = getBreakevenThreshold(
         glazePrice,
         poolWeth,
-        strategy
+        strategy,
       );
 
       const canBuy =
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
       if (canBuy) {
         const { data: holders } = await axios.get(
-          "https://base.blockscout.com/api/v2/tokens/0xEcDdeE4B294230C24285D92c0Eab81E63B5c0655/holders"
+          "https://base.blockscout.com/api/v2/tokens/0xEcDdeE4B294230C24285D92c0Eab81E63B5c0655/holders",
         );
         const holder_addresses = holders.items
           .map((holder: any) => {
@@ -83,10 +83,10 @@ export async function GET(req: NextRequest) {
             headers: {
               "x-api-key": process.env.NEYNAR_API_KEY as string,
             },
-          }
+          },
         );
         const fids = Object.values(profiles).map(
-          (profile: any) => profile[0].fid
+          (profile: any) => profile[0].fid,
         );
 
         await axios.post(
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
             notification: {
               title: `The pool is in buy range!`,
               body: "Buy King Glazer on behalf of the pool, and earn 25K $PEEPLES",
-              target_url: "https://peeplesdonuts.com/pool",
+              target_url: "https://peeplesdonuts.com",
             },
             target_fids: [...fids],
           },
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
             headers: {
               "x-api-key": process.env.NEYNAR_API_KEY as string,
             },
-          }
+          },
         );
         await redis.set("notification_sent", "true");
 
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message || "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
