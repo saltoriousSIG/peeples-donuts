@@ -37,9 +37,11 @@ export function getPaymentAmount(
   donutPrice?: bigint,
 ): bigint {
   if (!useDonut) return wethPrice;
-  if (!donutPrice || donutPrice === 0n) return wethPrice;
+  if (!donutPrice || donutPrice === 0n) {
+    throw new Error("DONUT price not available yet — please try again in a moment");
+  }
   const amtDonut = wethToDonut(wethPrice, donutPrice);
-  const buffer = amtDonut / 1000n; // Add 1% buffer to account for price fluctuations
+  const buffer = amtDonut / 100n; // 1% buffer to account for price fluctuations
   return amtDonut + buffer;
 }
 
