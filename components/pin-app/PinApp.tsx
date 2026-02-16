@@ -31,6 +31,7 @@ import {
   PoolModal,
   type ModalType,
 } from "@/components/modals";
+import { MintingVideo } from "./MintingVideo";
 
 // Bronze flair options for onboarding
 const BRONZE_FLAIR = FLAIR_TOKENS.filter((f) => f.rarity === "Bronze");
@@ -185,18 +186,18 @@ export function PinApp({ initialModal = null }: PinAppProps) {
 
     const result = hasShares && !hasPin
       ? await executeFreeMint({
-          flairTokenId: BigInt(selectedFlair.tokenId),
-          currency: selectedCurrency,
-          flairPrice: flairMintPrice ?? 0n,
-        })
+        flairTokenId: BigInt(selectedFlair.tokenId),
+        currency: selectedCurrency,
+        flairPrice: flairMintPrice ?? 0n,
+      })
       : await executeOnboarding({
-          flairTokenId: BigInt(selectedFlair.tokenId),
-          wethAmount: parseEther(selectedAmount || "0"),
-          gauge: selectedFlair.gauge,
-          currency: selectedCurrency,
-          mintPrice: pinMintPrice ?? 0n,
-          flairPrice: flairMintPrice ?? 0n,
-        });
+        flairTokenId: BigInt(selectedFlair.tokenId),
+        wethAmount: parseEther(selectedAmount || "0"),
+        gauge: selectedFlair.gauge,
+        currency: selectedCurrency,
+        mintPrice: pinMintPrice ?? 0n,
+        flairPrice: flairMintPrice ?? 0n,
+      });
 
     if (result?.success) {
       // Mark as minted (for mock mode state tracking)
@@ -602,22 +603,14 @@ export function PinApp({ initialModal = null }: PinAppProps) {
 
           {/* Main donut body */}
           <div
-            className="relative w-56 h-56 rounded-full bg-gradient-to-br from-[#E8DCC8] to-[#D4C4A8] border-4 border-dashed border-[#D4915D]/30 transition-all duration-500"
+            className="relative w-72 h-72 rounded-full bg-gradient-to-br from-[#E8DCC8] to-[#D4C4A8] border-4 border-dashed border-[#D4915D]/30 transition-all duration-500"
             style={{ boxShadow: `0 10px 30px rgba(139, 115, 85, 0.2)` }}
           >
             {/* Donut hole / face area */}
             <div className="absolute inset-8 rounded-full bg-[#FDF6E3] flex items-center justify-center overflow-hidden shadow-inner">
               {/* Birthing phase - simple elegant loader */}
               {phase === "birthing" ? (
-                <div className="flex flex-col items-center justify-center relative w-full h-full">
-                  <div className="absolute inset-2 rounded-full border-[3px] border-[#E8DCC8]" />
-                  <div className="absolute inset-2 rounded-full border-[3px] border-transparent border-t-[#D4915D] animate-spin-slow" />
-                  <img
-                    src="/media/peeples_donuts.png"
-                    alt=""
-                    className="w-12 h-12 object-contain opacity-60"
-                  />
-                </div>
+                <MintingVideo />
               ) : selectedFlair && phase === "feeding" ? (
                 <div className="text-center flex flex-col items-center justify-center">
                   <img
