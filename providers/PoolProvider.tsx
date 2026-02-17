@@ -311,7 +311,7 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
           throw new Error("Wallet not connected");
         }
         if (useDonut) {
-          await executeWethApprove([
+          await executeDonutApprove([
             CONTRACT_ADDRESSES.pool as Address,
             BigInt(amount),
           ]);
@@ -539,8 +539,8 @@ export const PoolProvider: React.FC<PoolProviderProps> = ({ children }) => {
   const memoizedMinAuctionBid = useMemo(
     () =>
       typeof minAuctionBid === "object" &&
-      minAuctionBid !== null &&
-      0 in minAuctionBid
+        minAuctionBid !== null &&
+        0 in minAuctionBid
         ? (minAuctionBid as readonly [bigint, boolean])[0]
         : 0n,
     [minAuctionBid]
