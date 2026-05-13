@@ -364,22 +364,20 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
             <div className="flex gap-2 mb-5 p-1.5 bg-white/30 rounded-xl">
               <button
                 onClick={() => setMode("deposit")}
-                className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-                  mode === "deposit"
-                    ? "bg-gradient-to-r from-[#82AD94] to-[#5C946E] text-white shadow-lg"
-                    : "text-[#5C4A3D] hover:bg-white/50"
-                }`}
+                className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${mode === "deposit"
+                  ? "bg-gradient-to-r from-[#82AD94] to-[#5C946E] text-white shadow-lg"
+                  : "text-[#5C4A3D] hover:bg-white/50"
+                  }`}
               >
                 <ArrowDownToLine className="w-4 h-4" />
                 Deposit
               </button>
               <button
                 onClick={() => setMode("withdraw")}
-                className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-                  mode === "withdraw"
-                    ? "bg-gradient-to-r from-[#FFB5BA] to-[#E8919A] text-white shadow-lg"
-                    : "text-[#5C4A3D] hover:bg-white/50"
-                }`}
+                className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${mode === "withdraw"
+                  ? "bg-gradient-to-r from-[#FFB5BA] to-[#E8919A] text-white shadow-lg"
+                  : "text-[#5C4A3D] hover:bg-white/50"
+                  }`}
               >
                 <ArrowUpFromLine className="w-4 h-4" />
                 Withdraw
@@ -390,21 +388,19 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
               <div className="flex gap-2 p-1.5 bg-white/30 rounded-xl mb-4">
                 <button
                   onClick={() => setUseDonut(false)}
-                  className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all ${
-                    !useDonut
-                      ? "bg-white/70 text-[#2D2319] shadow-sm"
-                      : "text-[#5C4A3D] hover:bg-white/40"
-                  }`}
+                  className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all ${!useDonut
+                    ? "bg-white/70 text-[#2D2319] shadow-sm"
+                    : "text-[#5C4A3D] hover:bg-white/40"
+                    }`}
                 >
                   WETH
                 </button>
                 <button
                   onClick={() => setUseDonut(true)}
-                  className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all ${
-                    useDonut
-                      ? "bg-white/70 text-[#2D2319] shadow-sm"
-                      : "text-[#5C4A3D] hover:bg-white/40"
-                  }`}
+                  className={`flex-1 px-3 py-2 rounded-lg font-bold text-xs transition-all ${useDonut
+                    ? "bg-white/70 text-[#2D2319] shadow-sm"
+                    : "text-[#5C4A3D] hover:bg-white/40"
+                    }`}
                 >
                   DONUT
                 </button>
@@ -422,11 +418,10 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className={`w-full bg-white/70 text-[#2D2319] border-2 rounded-xl px-4 py-4 text-lg font-semibold placeholder:text-[#A89485]/50 focus:outline-none transition-all ${
-                      mode === "deposit"
-                        ? "border-transparent focus:border-[#82AD94]"
-                        : "border-transparent focus:border-[#FFB5BA]"
-                    }`}
+                    className={`w-full bg-white/70 text-[#2D2319] border-2 rounded-xl px-4 py-4 text-lg font-semibold placeholder:text-[#A89485]/50 focus:outline-none transition-all ${mode === "deposit"
+                      ? "border-transparent focus:border-[#82AD94]"
+                      : "border-transparent focus:border-[#FFB5BA]"
+                      }`}
                   />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[#A89485] font-semibold">
                     {mode === "deposit" ? (useDonut ? "DONUT" : "WETH") : "SPEEP"}
@@ -519,16 +514,15 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
                     setShareAction("deposit");
                     setShareActionDetails({
                       message: `I just joined the Peeples Donuts Family Pool! 🍩👑 Let's get glazed together`,
-                      embed: "https://peeplesdonuts.com/pool",
+                      embed: "https://peeplesdonuts.com",
                     });
                     setShareModalOpen(true);
                   } else if (mode === "withdraw") {
                     withdraw(parseInt(parseUnits(amount || "0", 18).toString()));
                   }
                 }}
-                className={`btn-glazed w-full py-3.5 text-sm ${
-                  mode === "withdraw" ? "btn-strawberry" : ""
-                }`}
+                className={`btn-glazed w-full py-3.5 text-sm ${mode === "withdraw" ? "btn-strawberry" : ""
+                  }`}
               >
                 {mode === "deposit" ? (
                   <>
@@ -550,7 +544,7 @@ export function PoolModal({ isOpen, onClose }: PoolModalProps) {
               setShareAction("king-glazer");
               setShareActionDetails({
                 message: `I just bought King Glazer for the Peeples Pool, and earned 25K $PEEPLES 🍩👑 Let's get glazed together`,
-                embed: "https://peeplesdonuts.com/pool",
+                embed: "https://peeplesdonuts.com",
               });
               setShareModalOpen(true);
             }}

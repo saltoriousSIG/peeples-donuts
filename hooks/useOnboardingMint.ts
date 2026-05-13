@@ -16,7 +16,7 @@ import {
 } from "viem";
 import { DIAMOND_MULTICALL } from "@/lib/abi/diamond_multicall";
 import { ensureTokenApproval, getPaymentTokenAddress, getPaymentAmount } from "@/lib/token-utils";
-import { useMinerState } from "./useMinerState";
+import { useMinerState, type MinerState } from "./useMinerState";
 
 export interface OnboardingMintOptions {
   flairTokenId: bigint;
@@ -57,7 +57,7 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
   const [mintStep, setMintStep] =
     useState<UseOnboardingMintReturn["mintStep"]>("idle");
   const [mintProgress, setMintProgress] = useState(0);
-  const { minerState } = useMinerState();
+  const { minerState, refetchMinerState } = useMinerState();
 
   // Execute full onboarding flow for new users (approve + deposit + mint + buy flair + equip)
   const executeOnboarding = useCallback(
@@ -95,8 +95,12 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
         setMintStep("approving");
         setMintProgress(10);
 
+        // Refetch miner state to get a fresh donutPrice before calculating approval
+        const { data: freshMinerState } = await refetchMinerState();
+        const currentDonutPrice = (freshMinerState as MinerState | undefined)?.donutPrice ?? minerState?.donutPrice;
+
         const totalToApprove = totalAmount + options.flairPrice;
-        const approvalAmount = getPaymentAmount(totalToApprove, isDonut, minerState?.donutPrice);
+        const approvalAmount = getPaymentAmount(totalToApprove, isDonut, currentDonutPrice);
         await ensureTokenApproval(address, tokenAddress, poolAddress, approvalAmount, tokenName);
         setMintProgress(30);
 
@@ -178,7 +182,7 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
         setMintStep("idle");
       }
     },
-    [address, isConnected, fUser, mintStep, minerState]
+    [address, isConnected, fUser, mintStep, minerState, refetchMinerState]
   );
 
   // Execute free mint for existing shareholders (free pin + paid flair)
@@ -209,13 +213,16 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
       setIsMinting(true);
       setMintProgress(0);
 
-
-      const approvalAmount = getPaymentAmount(options.flairPrice, isDonut, minerState?.donutPrice);
       try {
         // Step 1: Approve token spend for flair purchase
         setMintStep("approving");
         setMintProgress(10);
 
+        // Refetch miner state to get a fresh donutPrice before calculating approval
+        const { data: freshMinerState } = await refetchMinerState();
+        const currentDonutPrice = (freshMinerState as MinerState | undefined)?.donutPrice ?? minerState?.donutPrice;
+
+        const approvalAmount = getPaymentAmount(options.flairPrice, isDonut, currentDonutPrice);
         await ensureTokenApproval(address, tokenAddress, poolAddress, approvalAmount, tokenName);
         setMintProgress(30);
 
@@ -295,7 +302,7 @@ export function useOnboardingMint(): UseOnboardingMintReturn {
         setMintStep("idle");
       }
     },
-    [address, isConnected, fUser, mintStep, minerState]
+    [address, isConnected, fUser, mintStep, minerState, refetchMinerState]
   );
 
   return {
