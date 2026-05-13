@@ -1045,6 +1045,19 @@ export function PinApp({ initialModal = null }: PinAppProps) {
 
       </div>
 
+      {/* Pool access - available to everyone */}
+      {phase === "idle" && (
+        <div className="absolute top-4 right-4 z-10">
+          <button
+            onClick={() => setActiveModal("pool")}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/90 rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all border border-[#E8DCC8]"
+          >
+            <span className="text-lg">🏊</span>
+            <span className="text-xs font-bold text-[#3D2914]">Family Pool</span>
+          </button>
+        </div>
+      )}
+
       {/* Header with logo */}
       <div className="absolute top-0 inset-x-0 pt-4 pb-6 bg-gradient-to-b from-[#3D2914] to-transparent">
         <div className="flex flex-col items-center">
@@ -1065,6 +1078,12 @@ export function PinApp({ initialModal = null }: PinAppProps) {
         onClose={() => setShareOpen(false)}
         action={shareAction}
         details={shareDetails}
+      />
+
+      {/* Pool modal - accessible without a pin */}
+      <PoolModal
+        isOpen={activeModal === "pool"}
+        onClose={() => setActiveModal(null)}
       />
 
       {/* Keyframe animations */}
